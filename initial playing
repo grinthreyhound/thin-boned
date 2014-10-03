@@ -1,46 +1,7 @@
-//thin analysis - start with familiarising with stata again.
-//set directory and load the data
-cd "H:\JOE\THIN"
-use consults3m.dta
-
-//take a look at it:
-// variables
-describe
-//more compactly can do ds to get names of variables only
-
-summarize indexdate //or su indexdate, and can ask for detail: su indexdate, d, which gives
-//centiles etc, not that this is meaningful for index date
-
-su age, d
-
-tab consult_group1
-
-//list gives us each case with it's characteristics: 
-//immediately there is an error in that one of the cases has code 0 for 
-//typediab
-
-list case typediab in 1/5
-
-// can try to find others: 
-
-list id case typediab if typediab==0 & case==1
-
-
-//There are loads of them!
-
-//try to create a variable for them:
-
-generate mismatch1 = 1 if typediab==0 & case==1 
-
-tab mismatch //there are 847 of them
-
-// this is because each line is an event, not a patient - so they were seen before diagnosis of DM
-
-// graphing index dates seems to show data ranges from 01Jan2000 to approx jan 2011
 
 // things to achieve, then try to do them:
 
-//go through all the variables:] best to develop this on smaller dataset:
+//go through all the variables: best to develop this on smaller dataset:
 cd "H:\JOE\THIN"
 use in 1/40 using consults3m.dta
 
@@ -63,15 +24,18 @@ quietly reshape wide eventdate , i(id) j(y)
 count
 restore
 
-//Case: how many entries are cases vs controls?  how many patients are cases vs controls?
+//Case: how many entries are cases vs controls?  
 inspect case
 bysort case: count
+tab case
 
+//how many patients are cases vs controls?
 preserve  
 keep id y eventdate case
 //go from long to wide
 quietly reshape wide eventdate , i(id) j(y)  
 tab case
+bysort case:count
 restore
 
 //indexdate: what is the range of dates?
@@ -79,24 +43,49 @@ egen datemax = max(indexdate)
 egen datemin = min(indexdate)
 
 //Eventdate: what is the range of dates?
+egen eventdatemax = max(eventdate)
+egen eventdatemin = min(eventdate)
 
 //consultgroups 1-4, how many of each?
+tab consult_group1
+tab consult_group2
+tab consult_group3
+tab consult_group4
 
-//medcode 1-8: how many of each?
+//medcode 1-8: how many of each? : not a sensible question as they are strings and there are lots of them.
 
-//symptom 1-8: as above, are they the same (truthing)
+//symptom 1-8: as above, many different ones
 
 //Age at index date: what is the age range of: events, cases, controls (truthing, should be the same).  Graph these (histogram).
+sum age
+hist age
+hist age, by(case)
+
 
 //sex: what is the sex distribution of: events, cases and controls: should be same
+tab sex
+tab sex case
+
+preserve  
+keep id y eventdate case sex
+//go from long to wide
+quietly reshape wide eventdate , i(id) j(y)  
+tab sex
+tab sex case
+hist sex, by(case)
+restore
 
 //died: how many? when? should be none
+tab died
 
 //birthdate: range?
+sum birthdate
 
 //regdate: range?  Should be 15 months before indexdate: check this.  
+sum regdate
 
 // xferdate: how many?  when?
+sum xferdate
 
 //deathdate: see death
 
