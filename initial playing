@@ -1,6 +1,6 @@
 //thin analysis - start with familiarising with stata again.
 //set directory and load the data
-cd "C:\Users\josephl\Documents\THIN data"
+cd "H:\JOE\THIN"
 use consults3m.dta
 
 //take a look at it:
@@ -33,3 +33,4 @@ list id case typediab if typediab==0 & case==1
 generate mismatch1 = 1 if typediab==0 & case==1 
 
 tab mismatch //there are 847 of them
+
