@@ -61,9 +61,9 @@ tab consult_group4
 //Age at index date: what is the age range of: events, cases, controls (truthing, should be the same).  Graph these (histogram).
 sum age
 hist age
-graph export ageatdiagnosis.tif
+graph export ageatdiagnosis.tif, replace
 hist age, by(case)
-graph export agecase.tif
+graph export agecase.tif, replace
 
 
 //sex: what is the sex distribution of: events, cases and controls: should be same
@@ -77,7 +77,7 @@ quietly reshape wide eventdate , i(id) j(y)
 tab sex
 tab sex case
 hist sex, discrete by(case, col(1))
-graph export sexcase.tif
+graph export sexcase.tif, replace
 restore
 
 //died: how many? when? should be none
