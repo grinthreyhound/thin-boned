@@ -34,3 +34,46 @@ generate mismatch1 = 1 if typediab==0 & case==1
 
 tab mismatch //there are 847 of them
 
+// this is because each line is an event, not a patient - so they were seen before diagnosis of DM
+
+// graphing index dates seems to show data ranges from 01Jan2000 to approx jan 2011
+
+// things to achieve, then try to do them:
+
+//go through all the variables:]
+
+//how many lines in the dataset?
+
+//id: how many id's? 
+
+//Case: how many entries are cases vs controls?  how many patents are cases vs controls?
+
+//indexdate: what is the range of dates?
+
+//Eventdate: what is the range of dates?
+
+//consultgroups 1-4, how many of each?
+
+//medcode 1-8: how many of each?
+
+//symptom 1-8: as above, are they the same (truthing)
+
+//Age at index date: what is the age range of: events, cases, controls (truthing, should be the same).  Graph these (histogram).
+
+//sex: what is the sex distribution of: events, cases and controls: should be same
+
+//died: how many? when? should be none
+
+//birthdate: range?
+
+//regdate: range?  Should be 15 months before indexdate: check this.  
+
+// xferdate: how many?  when?
+
+//deathdate: see death
+
+//case_patid: matching ID
+
+//typediab: make sure all cases have this and no controls do.
+
+//
