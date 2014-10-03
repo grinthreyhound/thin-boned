@@ -75,7 +75,8 @@ tab case
 restore
 
 //indexdate: what is the range of dates?
-
+egen datemax = max(indexdate)
+egen datemin = min(indexdate)
 
 //Eventdate: what is the range of dates?
 
