@@ -40,13 +40,39 @@ tab mismatch //there are 847 of them
 
 // things to achieve, then try to do them:
 
-//go through all the variables:]
+//go through all the variables:] best to develop this on smaller dataset:
+cd "H:\JOE\THIN"
+use in 1/40 using consults3m.dta
 
 //how many lines in the dataset?
+count
 
 //id: how many id's? 
 
-//Case: how many entries are cases vs controls?  how many patents are cases vs controls?
+// create a list number:
+generate order = _n 
+
+//create a label y for each nth event that each child has
+by id (order), sort: generate y = _n  
+
+//we are going to drop data so preserve the set
+preserve  
+keep id y eventdate 
+//go from long to wide
+quietly reshape wide eventdate , i(id) j(y)  
+count
+restore
+
+//Case: how many entries are cases vs controls?  how many patients are cases vs controls?
+inspect case
+bysort case: count
+
+preserve  
+keep id y case
+//go from long to wide
+quietly reshape wide case , i(id) j(y)  
+count
+restore
 
 //indexdate: what is the range of dates?
 
