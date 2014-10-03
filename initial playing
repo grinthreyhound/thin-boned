@@ -68,13 +68,14 @@ inspect case
 bysort case: count
 
 preserve  
-keep id y case
+keep id y eventdate case
 //go from long to wide
-quietly reshape wide case , i(id) j(y)  
-count
+quietly reshape wide eventdate , i(id) j(y)  
+tab case
 restore
 
 //indexdate: what is the range of dates?
+
 
 //Eventdate: what is the range of dates?
 
