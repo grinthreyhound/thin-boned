@@ -83,14 +83,24 @@ sum birthdate
 
 //regdate: range?  Should be 15 months before indexdate: check this.  
 sum regdate
+generate reg = indexdate - regdate
+sum reg
+drop reg
 
 // xferdate: how many?  when?
 sum xferdate
+generate xfer = indexdate - xferdate
+sum xfer
 
 //deathdate: see death
 
 //case_patid: matching ID
 
-//typediab: make sure all cases have this and no controls do.
+//typediab: make sure all cases have this and no controls do.  Actually some cases don't have a type. 
+preserve
+keep id y eventdate case typediab
+quietly reshape wide eventdate , i(id) j(y)  
+tab typediab
+tab typediab case
+restore
 
-//
