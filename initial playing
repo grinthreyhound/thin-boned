@@ -5,6 +5,8 @@
 cd "H:\JOE\THIN"
 use in 1/40 using consults3m.dta
 
+
+
 //how many lines in the dataset?
 count
 
@@ -59,7 +61,9 @@ tab consult_group4
 //Age at index date: what is the age range of: events, cases, controls (truthing, should be the same).  Graph these (histogram).
 sum age
 hist age
+graph export ageatdiagnosis.tif
 hist age, by(case)
+graph export agecase.tif
 
 
 //sex: what is the sex distribution of: events, cases and controls: should be same
@@ -72,7 +76,8 @@ keep id y eventdate case sex
 quietly reshape wide eventdate , i(id) j(y)  
 tab sex
 tab sex case
-hist sex, by(case)
+hist sex, discrete by(case, col(1))
+graph export sexcase.tif
 restore
 
 //died: how many? when? should be none
