@@ -1,0 +1,29 @@
+//get the data
+//start with a small section
+
+cd "H:\JOE\THIN"
+use in 1/30 using consults3m.dta
+
+//try to draw graphs of symptoms vs time
+
+// need to make a variable for time before diagnosis: indexdate minus eventdate
+
+//gen timebefore = indexdate - eventdate
+
+gen t2 = eventdate - indexdate
+
+hist t2, by(case)
+// turns out that cases and controls are both having contacts in the month ish before index.
+
+// to do a survival type graph need to make the data 'st'
+
+preserve
+
+stset eventdate, failure(consult_group2)
+
+sts graph, na
+restore
+
+//not really the right thing to do as these are for cohorts really. 
+
+
