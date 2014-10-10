@@ -37,7 +37,7 @@ gen contime4 = eventdate if  consult_group1 ==4
 gen time1 = contime1 - newindex
 
 hist time1, by(case)
-// this shows most of the controls have a conbsult on the index day
+// this shows most of the controls have a consult on the index day
 //they were selected because of this so drop these ones:
 
 preserve
@@ -45,10 +45,20 @@ drop if time1 ==1
 hist time1, by(case)
 restore
 
-//not really a valid comparison due to the matching of the cases and controls!
+//not really a valid comparison due to the matching of the cases and controls, but shows cases were consulting less
+prior to the immediate time preceeding the diagnosis.  
 
+//reshape the data to be one line for each case
+//First create a list number:
+generate order = _n
+//create a label y for each nth event that each child has
+by id (order), sort: generate y = _n 
 
-//by id: egen lasttime = max(cond(state == 1, time, .))
+preserve
+quietly reshape wide eventdate , i(id) j(y)
+stset newindex, failure(consult_group2)
+sts graph, na
+restore
 
 
 // to do a survival type graph need to make the data 'st'
