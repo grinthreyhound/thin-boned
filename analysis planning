@@ -13,7 +13,43 @@ use in 1/30 using consults3m.dta
 gen t2 = eventdate - indexdate
 
 hist t2, by(case)
-// turns out that cases and controls are both having contacts in the month ish before index.
+
+// turns out that cases and controls are both having contacts in the month ish before index.  Note that they were matched
+// on time of consultation to case +/- 21 days: actually for this graph should use that date:
+
+//actually need to create new index date: where it is the index case for the cases and the last contact for controls:
+
+by id, sort: egen lasttime = max(eventdate)
+gen newindex = indexdate if case==1
+replace newindex = lasttime if case ==0
+
+gen time = eventdate - newindex
+
+hist time, by(case) 
+
+//can get times of most recent consultation types:
+
+gen contime1 = eventdate if  consult_group1 ==1
+gen contime2 = eventdate if  consult_group1 ==2
+gen contime3 = eventdate if  consult_group1 ==3
+gen contime4 = eventdate if  consult_group1 ==4
+
+gen time1 = contime1 - newindex
+
+hist time1, by(case)
+// this shows most of the controls have a conbsult on the index day
+//they were selected because of this so drop these ones:
+
+preserve
+drop if time1 ==1
+hist time1, by(case)
+restore
+
+//not really a valid comparison due to the matching of the cases and controls!
+
+
+//by id: egen lasttime = max(cond(state == 1, time, .))
+
 
 // to do a survival type graph need to make the data 'st'
 
