@@ -65,22 +65,17 @@ restore
 
 //can do the same for symptom clusters:
 // need time of an occurrence if the symptom cluster value is not null (i.e. is a string)
+// can do as a loop
 
-gen symptime1 = eventdate if  symptom1 !="."
-gen symptime1 = eventdate if  symptom1 !="."
-gen symptime1 = eventdate if  symptom1 !="."
-
-gen symp1 = symptime1 - newindex
-
-
-
+forvalues i = 1/8 {
 preserve
-drop if symp1 ==0
-hist symp1, by(case)
-graph export symptom1.tif, replace
+gen symptime`i' = eventdate if  symptom`i' !=""
+gen symp`i' = symptime`i' - newindex
+drop if symp`i' ==0
+hist symp`i', by(case)
+graph export symptom`i'.tif, replace
 restore
-
-
+}
 
 
 //not really a valid comparison due to the matching of the cases and controls, but shows cases were consulting less
