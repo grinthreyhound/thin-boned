@@ -1,19 +1,13 @@
 //get the data
 //start with a small section
-
+//use in 1/30 using consults3m.dta
 cd "H:\JOE\THIN"
-use in 1/30 using consults3m.dta
+//or the whole thing:
+use consults3m.dta
 
-//try to draw graphs of symptoms vs time
+//try to draw graphs of symptoms vs time as per Bankhead paper
 
 // need to make a variable for time before diagnosis: indexdate minus eventdate
-
-//gen timebefore = indexdate - eventdate
-
-gen t2 = eventdate - indexdate
-
-hist t2, by(case)
-
 // turns out that cases and controls are both having contacts in the month ish before index.  Note that they were matched
 // on time of consultation to case +/- 21 days: actually for this graph should use that date:
 
@@ -25,36 +19,84 @@ replace newindex = lasttime if case ==0
 
 gen time = eventdate - newindex
 
-hist time, by(case) 
+//hist time, by(case) //plotting these shows the massive spike in controls at day 0
 
 //can get times of most recent consultation types:
 
 gen contime1 = eventdate if  consult_group1 ==1
-gen contime2 = eventdate if  consult_group1 ==2
-gen contime3 = eventdate if  consult_group1 ==3
-gen contime4 = eventdate if  consult_group1 ==4
+gen contime2 = eventdate if  consult_group2 ==1
+gen contime3 = eventdate if  consult_group3 ==1
+gen contime4 = eventdate if  consult_group4 ==1
 
 gen time1 = contime1 - newindex
+gen time2 = contime2 - newindex
+gen time3 = contime3 - newindex
+gen time4 = contime4 - newindex
 
-hist time1, by(case)
+
+
+//hist time1, by(case)
 // this shows most of the controls have a consult on the index day
 //they were selected because of this so drop these ones:
 
 preserve
-drop if time1 ==1
+drop if time1 ==0
 hist time1, by(case)
+graph export time1case.tif, replace
 restore
+
+preserve
+drop if time2 ==0
+hist time2, by(case)
+graph export time2case.tif, replace
+restore
+
+preserve
+drop if time3 ==0
+hist time3, by(case)
+graph export time3case.tif, replace
+restore
+
+preserve
+drop if time4 ==0
+hist time4, by(case)
+graph export time4case.tif, replace
+restore
+
+//can do the same for symptom clusters:
+// need time of an occurrence if the symptom cluster value is not null (i.e. is a string)
+
+gen symptime1 = eventdate if  symptom1 !="."
+gen symptime1 = eventdate if  symptom1 !="."
+gen symptime1 = eventdate if  symptom1 !="."
+
+gen symp1 = symptime1 - newindex
+
+
+
+preserve
+drop if symp1 ==0
+hist symp1, by(case)
+graph export symptom1.tif, replace
+restore
+
+
+
 
 //not really a valid comparison due to the matching of the cases and controls, but shows cases were consulting less
 prior to the immediate time preceeding the diagnosis.  
 
+
+
+//Another approach: survial analysis
 //reshape the data to be one line for each case
-//First create a list number:
+//First create a list numbers:
 generate order = _n
 //create a label y for each nth event that each child has
 by id (order), sort: generate y = _n 
 
 preserve
+drop if time1==0
 quietly reshape wide eventdate , i(id) j(y)
 stset newindex, failure(consult_group2)
 sts graph, na
@@ -72,4 +114,7 @@ restore
 
 //not really the right thing to do as these are for cohorts really. 
 
+
+//n.b.  deaths all after index dates:
+list birthdate indexdate deathdate eventdate if deathdate!=.
 
