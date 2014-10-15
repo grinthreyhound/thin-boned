@@ -1,9 +1,10 @@
 //get the data
 //start with a small section
-//use in 1/30 using consults3m.dta
+
 cd "H:\JOE\THIN"
+use in 1/100 using consults3m.dta
 //or the whole thing:
-use consults3m.dta
+//use consults3m.dta
 
 //try to draw graphs of symptoms vs time as per Bankhead paper
 
@@ -77,19 +78,33 @@ graph export symptom`i'.tif, replace
 restore
 }
 
-
-//not really a valid comparison due to the matching of the cases and controls, but shows cases were consulting less
+//not really a valid comparison due to the matching of the cases and controls, but shows cases were consulting more evenly
 prior to the immediate time preceeding the diagnosis.  
 
+//try to show events per person time - to begin with remember that the time at risk for cases and controls is the same (15m each)
+
+// reshape the data to be wide:
 
 
-//Another approach: survial analysis
+
 //reshape the data to be one line for each case
 //First create a list numbers:
 generate order = _n
 //create a label y for each nth event that each child has
 by id (order), sort: generate y = _n 
 
+preserve
+keep eventdate id y case newindex
+quietly reshape wide eventdate, i(id) j(y)
+stset newindex, failure(eventdate3)
+sts graph, by(case)
+////////////////////////////Actually need to reset the time of entry to be index date minus 15 months
+
+restore
+
+
+//Another approach: survial analysis
+// to do a survival type graph need to make the data 'st'
 preserve
 drop if time1==0
 quietly reshape wide eventdate , i(id) j(y)
@@ -98,7 +113,7 @@ sts graph, na
 restore
 
 
-// to do a survival type graph need to make the data 'st'
+
 
 preserve
 
