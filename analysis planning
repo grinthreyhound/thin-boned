@@ -35,14 +35,20 @@ tab z case, col
 
 gen entrytime = indexdate - 457
 
+
 //now reshape wide:
 preserve
 keep eventdate id z y case newindex entrytime
 quietly reshape wide eventdate, i(id) j(y)
 tab z case, col 
 hist z, by(case)
+restore
 
 //need to compare baseline contacts between cases and controls: 
+//stset the data to indicate is survival time data with multiple lines per person (specify id)
+//Need to specify exit or else it terminates after first failure
+stset eventdate, id(id) fail(consult_group4) exit(time .) origin(entrytime)
+sts graph, fail by(case)
 
 
 
