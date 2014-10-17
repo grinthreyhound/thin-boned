@@ -8,99 +8,71 @@ use in 1/100 using consults3m.dta
 
 //try to draw graphs of symptoms vs time as per Bankhead paper
 
-// need to make a variable for time before diagnosis: indexdate minus eventdate
-// turns out that cases and controls are both having contacts in the month ish before index.  Note that they were matched
-// on time of consultation to case +/- 21 days: actually for this graph should use that date:
 
-//actually need to create new index date: where it is the index case for the cases and the last contact for controls:
+//actually need to create new index date: where it is the index case for the cases and 
+//the last contact for controls:
 
 by id, sort: egen lasttime = max(eventdate)
 gen newindex = indexdate if case==1
 replace newindex = lasttime if case ==0
 
-gen time = eventdate - newindex
-
-//hist time, by(case) //plotting these shows the massive spike in controls at day 0
-
-//can get times of most recent consultation types:
-
-gen contime1 = eventdate if  consult_group1 ==1
-gen contime2 = eventdate if  consult_group2 ==1
-gen contime3 = eventdate if  consult_group3 ==1
-gen contime4 = eventdate if  consult_group4 ==1
-
-gen time1 = contime1 - newindex
-gen time2 = contime2 - newindex
-gen time3 = contime3 - newindex
-gen time4 = contime4 - newindex
-
-
-
-//hist time1, by(case)
-// this shows most of the controls have a consult on the index day
-//they were selected because of this so drop these ones:
-
-preserve
-drop if time1 ==0
-hist time1, by(case)
-graph export time1case.tif, replace
-restore
-
-preserve
-drop if time2 ==0
-hist time2, by(case)
-graph export time2case.tif, replace
-restore
-
-preserve
-drop if time3 ==0
-hist time3, by(case)
-graph export time3case.tif, replace
-restore
-
-preserve
-drop if time4 ==0
-hist time4, by(case)
-graph export time4case.tif, replace
-restore
-
-//can do the same for symptom clusters:
-// need time of an occurrence if the symptom cluster value is not null (i.e. is a string)
-// can do as a loop
-
-forvalues i = 1/8 {
-preserve
-gen symptime`i' = eventdate if  symptom`i' !=""
-gen symp`i' = symptime`i' - newindex
-drop if symp`i' ==0
-hist symp`i', by(case)
-graph export symptom`i'.tif, replace
-restore
-}
-
-//not really a valid comparison due to the matching of the cases and controls, but shows cases were consulting more evenly
-prior to the immediate time preceeding the diagnosis.  
 
 //try to show events per person time - to begin with remember that the time at risk for cases and controls is the same (15m each)
-
 // reshape the data to be wide:
 
-
-
-//reshape the data to be one line for each case
 //First create a list numbers:
 generate order = _n
 //create a label y for each nth event that each child has
 by id (order), sort: generate y = _n 
+//generate a variable that is the maximum of y (i.e. the number of consultations per person)
+egen z = max(y), by(id)
+//tabulate this with column %
+tab z case, col
+
+
+
+//need to reset the time of entry to be index date minus 15 months
+
+gen entrytime = indexdate - 457
+
+//now reshape wide:
+preserve
+keep eventdate id z y case newindex entrytime
+quietly reshape wide eventdate, i(id) j(y)
+tab z case, col 
+hist z, by(case)
+
+//need to compare baseline contacts between cases and controls: 
+
+
 
 preserve
-keep eventdate id y case newindex
+keep eventdate id y case newindex entrytime 
 quietly reshape wide eventdate, i(id) j(y)
-stset newindex, failure(eventdate3)
+stset entrytime, failure(eventdate1)
 sts graph, by(case)
-////////////////////////////Actually need to reset the time of entry to be index date minus 15 months
-
+//Ok but annoying scale.  
+//instead can use sts to generate a variable containning the KM survival function and plot directly
+//do this later as not obvious how to get it to work...
+//sts gen survevent1 = s
+//sts gen surv_bycase = s, by(case)
+//graph twoway line ...
 restore
+
+//counting the events per person: 
+
+//y is a variable that counts the number of events
+tab y case
+tab y case, row
+
+preserve
+keep case id y newindex eventdate
+quietly reshape wide eventdate, i(id) j(y)
+//now have one line per id, with eventdate1 through 4
+//need to generate a new variable to count the events
+gen 
+
+
 
 
 //Another approach: survial analysis
