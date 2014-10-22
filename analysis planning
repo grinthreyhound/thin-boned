@@ -2,7 +2,7 @@
 //start with a small section
 
 cd "H:\JOE\THIN"
-use in 1/100 using consults3m.dta
+use in 1/10 using consults3m.dta
 //or the whole thing:
 //use consults3m.dta
 
@@ -34,7 +34,7 @@ tab z case, col
 //need to reset the time of entry to be index date minus 15 months
 
 gen entrytime = indexdate - 457
-
+format entrytime %td
 
 //now reshape wide:
 preserve
@@ -47,8 +47,29 @@ restore
 //need to compare baseline contacts between cases and controls: 
 //stset the data to indicate is survival time data with multiple lines per person (specify id)
 //Need to specify exit or else it terminates after first failure
-stset eventdate, id(id) fail(consult_group4) exit(time .) origin(entrytime)
-sts graph, fail by(case)
+
+preserve
+stset eventdate, id(id) fail(consult_group3) exit(time .) origin(entrytime) scale(365.25)
+
+//splitting the data into approximate quarters: lexis expansion
+//problem with stsplit:   
+stsplit earlylate, at(0.25 0.5 0.75 0.95 1 1.1 1.2 1.3 1.4) after(entrytime)
+
+//then get rate estimates for each time period
+
+strate case earlylate
+
+restore
+
+
+streset fail(consult_group3)
+strate case earlylate
+
+
+streset fail(consult_group2)
+
+streset fail(consult_group1)
+
 
 
 
