@@ -37,27 +37,30 @@ gen entrytime = indexdate - 457
 format entrytime %td
 
 //now reshape wide:
-preserve
-keep eventdate id z y case newindex entrytime
-quietly reshape wide eventdate, i(id) j(y)
-tab z case, col 
-hist z, by(case)
-restore
+//preserve
+//keep eventdate id z y case newindex entrytime
+//quietly reshape wide eventdate, i(id) j(y)
+//tab z case, col 
+//hist z, by(case)
+//restore
 
 //need to compare baseline contacts between cases and controls: 
 //stset the data to indicate is survival time data with multiple lines per person (specify id)
 //Need to specify exit or else it terminates after first failure
 
+//try using the last date they were seen: 
+gen enter = lasttime-457
+
 preserve
-stset eventdate, id(id) fail(consult_group3) exit(time .) origin(entrytime) scale(365.25)
+stset eventdate, id(id) fail(consult_group3) exit(time .) origin(enter) scale(1)
 
 //splitting the data into approximate quarters: lexis expansion
-//problem with stsplit:   
-stsplit earlylate, at(0.25 0.5 0.75 0.95 1 1.1 1.2 1.3 1.4) after(entrytime)
+
+stsplit earlylate, at(365(5)450) after(entrytime) 
 
 //then get rate estimates for each time period
 
-strate case earlylate
+strate case earlylate, g
 
 restore
 
