@@ -56,7 +56,7 @@ stset eventdate, id(id) fail(consult_group3) exit(time .) origin(enter) scale(1)
 
 //splitting the data into approximate quarters: lexis expansion
 
-stsplit earlylate, at(365(5)450) after(entrytime) 
+stsplit earlylate, at(365(5)450) after(enter) 
 
 //then get rate estimates for each time period
 
