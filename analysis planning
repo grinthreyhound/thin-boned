@@ -115,16 +115,10 @@ sts graph, na
 restore
 
 
+// need to generate a variable that demonstartes which groups are related from case_patid
+gen cluster = case_patid if case==0 
+replace cluster = id if case==1
 
-
-preserve
-
-stset eventdate, failure(consult_group2)
-
-sts graph, na
-restore
-
-//not really the right thing to do as these are for cohorts really. 
 
 
 //n.b.  deaths all after index dates:
