@@ -7,6 +7,8 @@ cd "H:\JOE\THIN"
 //use consults3m.dta
 //use consultation15_ss2.dta: unfortunately this doesn't have case/control coded.  
 
+use consultation15_ss2_CC.dta
+// case is 1, control is 2
 //try to draw graphs of symptoms vs time as per Bankhead paper
 
 
@@ -14,8 +16,8 @@ cd "H:\JOE\THIN"
 //the last contact for controls:
 
 by id, sort: egen lasttime = max(eventdate)
-gen newindex = indexdate if case==1
-replace newindex = lasttime if case ==0
+//gen newindex = indexdate if case==1
+//replace newindex = lasttime if case ==0
 
 
 //try to show events per person time - to begin with remember that the time at risk for cases and controls is the same (15m each)
@@ -34,7 +36,7 @@ replace newindex = lasttime if case ==0
 
 //need to reset the time of entry to be index date minus 15 months
 
-gen entrytime = indexdate - 456
+gen entrytime = lasttime - 456
 format entrytime %td
 
 //now reshape wide:
@@ -57,21 +59,26 @@ sum duration
 
 //try using the last date they were seen: 
 gen enter = lasttime-456
+generate order = _n
 
 preserve
-stset eventdate, id(id) fail(p) exit(time .) origin(enter) scale(1)
+stset eventdate, id(id) fail(order) exit(time .) origin(enter) scale(1)
 
 //splitting the data into time periods: lexis expansion
 
-stsplit earlylate, at(5(5)455) after(enter) 
+stsplit earlylate, at(5(5)365) after(enter) 
 
 //then get rate estimates for each time period
 // drop the event dates:
-drop if earlylate==455
+drop if earlylate==365
 
-strate case earlylate, per(365.25) g
+strate case_control earlylate, per(365.25) g
 
-streset fail(consult_group4)
+///there is a definite problem with the way I've been dealing with time: if I use -365 or -460
+//the earliest ones have very low rates.  Need to think about this. 
+
+
+streset 
 strate case earlylate, per(365.25) g
 
 restore
