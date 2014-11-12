@@ -3,8 +3,35 @@ A project examining the presentation of children with diabetes.
 
 A case control study on data from the THIN database (a GP consultation database)
 
-The study questions:
+The study questions (the short version - there are subsets to analyse but if we can get the methods OK for these questions then the
+others should be OK with the same techniques)
+1. Do children with Diabetes Mellitus present more frequently than their controls before they are diagnosed with DM?
 
-The dataset: 
+2. If so - when do they start to present more frequently? (in relation to the time of their diagnosis - how many days before
+being diagnosed?)
+
+3. Hypothesis generating/descriptive: How do they present i.e. what modes of presentation and what codes are recorded?
+
+
+The dataset: The basics
+Extracted from the THIN database.
+10,000 patients: 2000 cases and 8000 matched controls.
+Matched on Age, gender, practice and consultation date - within 21 days of the case.
+Variables for 
+  various types of consultation (all, subsets including out of hours, face to face only etc.)
+  Dates - index date (when diagnosis of Diabetes made), event dates(when the consultations occurred), Birthdate, registration with
+  the practice and transfer out. Dates of deaths
+  demographics - Age, sex, 
+  diagnoses - type of diabetes, other codes that were recorded during consultations
+  Our variables - individual id, case number for matched controls
 
 Statistical issues: 
+The big question is how to best perform an analysis of matched data to give time dependent effect estimates?  I.e. I want to know
+at what time before diagnosis the cases start presenting at a higher rate than controls. I also want to be able to compare the baseline 
+rate of consultations as I am worried that matching on the consultation date may have selected a subset of potential controls who are high
+attenders for whatever reason.  
+Where I'm at: 
+1. Conditional logistic regression could be used to constrain within matched sets, but this doesn't give time dependent estimates.  
+Is it valid/workable to break downt the time at risk of event into further matched sections by lexix expansion, 
+or will this cause problems given the large number of empty periods this will casue?
+2. Is there a way of constraining Poisson regression (or some other method) to perform a valid matched analysis?
