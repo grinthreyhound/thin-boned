@@ -20,9 +20,10 @@ gen enter = lasttime - 456
 format enter %td 
 generate order = _n
 
-//need a matching variable: strings not allowed
+//need a matching variable: strings not allowed, so number them, remember _N not _n (which just counts them)
 generate mgroup = id if case_control ==1
 replace mgroup = case_id if case_control ==2
+bysort mgroup: generate G=_N
 
 
 //need to compare baseline contacts between cases and controls: 
@@ -43,5 +44,5 @@ stsplit earlylate, at(5(5)282) after(enter)
 
 //now try poisson with random effects model applied to the matching
 
-xtpoisson BMI, i(mgroup)
+xtpoisson i., i(G) //not appropriate - actually don't need to declare st first, as will break down via lexis expansion.
 
