@@ -1,0 +1,6 @@
+//2 valid approaches: conditional poisson regression or inserting the matching set into poisson as ranom effect variable.
+//though likely that accounting for matching will make little difference so can do sensitivity analysis to that effect
+//Using own date confirmed as the right thing to do.  
+//
+
+//
