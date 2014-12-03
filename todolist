@@ -26,7 +26,16 @@ by id: generate mgroup = id if case_control ==1
 replace mgroup = case_id if case_control ==2
 egen clusterid = group(mgroup)
 
-//need a variable for failure:
+//need a variable for any failure:
+generate failure=1
+//First create a list numbers:
+generate order = _n
+//create a label y for each nth event that each child has
+by id (order), sort: generate y = _n 
+//generate a variable that is the maximum of y (i.e. the number of consultations per person)
+egen z = max(y), by(id)
+//tabulate this with column %
+*tab z case, col
 
 //need to compare baseline contacts between cases and controls: 
 //stset the data to indicate is survival time data with multiple lines per person (specify id)
@@ -37,14 +46,19 @@ egen clusterid = group(mgroup)
 *gen duration = lasttime - firstdate
 *sum duration
 
+//to use Xt poisson need to xtset the data: delare it to be panel data
+//cant use string id so need to group this
+egen numid =group(id)
 preserve
-stset eventdate, id(id) fail() exit(time .) origin(enter) scale(1)
+xtset numid eventdate
 
 //splitting the data into time periods: lexis expansion
 
-stsplit earlylate, at(5(5)282) after(enter) 
+//stsplit earlylate, at(5(5)282) after(enter) 
 
-//now try poisson with random effects model applied to the matching
+//now try poisson with random effects model applied to the matching variable: need to review ASME 11
+
+*xtpoisson case_control, exp(clusterid) irr
 
 xtpoisson i., i(G) //not appropriate - actually don't need to declare st first, as will break down via lexis expansion.
 
