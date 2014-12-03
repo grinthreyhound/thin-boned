@@ -7,24 +7,18 @@
 //start with a small section
 
 cd "H:\JOE\THIN"
-use in 1/10 using consultation15_ss2_CC.dta
+use in 1/100 using consultation15_ss2_CC.dta
 // case is 1, control is 2
 
 //create new index date: where it is the last contact in the record:
 
 by id, sort: egen lasttime = max(eventdate)
 format lasttime %td
-//need to reset the time of entry to be index date minus 15 months, format as a date and
-//use the order to generate a variable for a failure
-gen enter = lasttime - 456
-format enter %td 
-generate order = _n
 
-//need a matching variable: strings not allowed, so number them, remember _N not _n (which just counts them)
-generate mgroup = id if case_control ==1
+//need a matching variable: strings not allowed, so number them: 
+by id: generate mgroup = id if case_control ==1
 replace mgroup = case_id if case_control ==2
-bysort mgroup: generate G=_N
-
+egen clusterid = group(mgroup)
 
 //need to compare baseline contacts between cases and controls: 
 //stset the data to indicate is survival time data with multiple lines per person (specify id)
