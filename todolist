@@ -5,9 +5,9 @@
 
 //get the data
 //start with a small section
-
+set memory 1g
 cd "H:\JOE\THIN"
-use in 1/100 using consultation15_ss2_CC.dta
+use in 1/1000 using consultation15_ss2_CC.dta
 // case is 1, control is 2
 
 //create new index date: where it is the last contact in the record:
@@ -18,11 +18,6 @@ format lasttime %td
 //create a new entry date
 gen enter = lasttime-456
 
-//prepare to drop the index date events, but don't do it yet!:
-//gen indexevent = 1 if lasttime==eventdate
-
-//drop if lasttime==eventdate
-
 //need a matching variable: strings not allowed, so number them: 
 by id: generate mgroup = id if case_control ==1
 replace mgroup = case_id if case_control ==2
@@ -31,11 +26,11 @@ egen clusterid = group(mgroup)
 //need a variable for any failure:
 generate failure=1
 //First create a list numbers:
-generate order = _n
+*generate order = _n
 //create a label y for each nth event that each child has
-by id (order), sort: generate y = _n 
+*by id (order), sort: generate y = _n 
 //generate a variable that is the maximum of y (i.e. the number of consultations per person)
-egen z = max(y), by(id)
+*egen z = max(y), by(id)
 //tabulate this with column %
 *tab z case, col
 
@@ -50,12 +45,12 @@ egen z = max(y), by(id)
 
 //to use Xt poisson need to xtset the data: delare it to be panel data: xtset panelvar timevar
 //xtsetting is a new command, //Panel data assumes there have been observations I think, so STset/stsplit first
-//cant use string id so need to group this  NB: if want to keep labels could use : encode id,gen(numid) 
+//cant use string id so need to group this  NB: if want to keep labels could instead use : encode id,gen(numid) 
 egen numid =group(id)
 
-preserve
+*preserve
 stset eventdate, id(id) fail(failure) exit(time .) origin(enter) scale(1)
-stsplit earlylate, at(5(5)365) after(enter) 
+stsplit earlylate, at(30(30)456) after(enter) 
 stset, clear
 //now need to sort out multiples: casued by some presenting >1 time in stplit period
 //generate dup to count duplicates
@@ -66,14 +61,35 @@ by numid earlylate: egen events = max(dup)
 //drop the duplicates but keep the number of events
 drop if dup<events
 //now redefine the failures to be the number of events: failure is now the number of events in the time period
-replace  = events if events>failure
+replace failure = events if events>failure
+
+//drop the last events - the ones selected upon, but only if there are no multiples in that time period:
+drop if lasttime==eventdate & failure==1
+replace failure=failure-1 if lasttime==eventdate & failure!=.
+//now we have panel data with time from event in earlylate and number of events in each time period in failure
+*duplicates earlylate numid
+*xtset numid earlylate
+*xtpoisson case_control i.earlylate, irr exp(failure)
+
+preserve
+drop if earlylate !=450
+poisson failure case_control, irr
+restore
+preserve
+drop if earlylate !=420
+poisson failure case_control, irr
+restore 
+preserve
+drop if earlylate !=390
+poisson failure case_control, irr
+restore
 
 
 
 
 
 
-xtset numid earlylate
+
 
 
 //now try poisson with random effects model applied to the matching variable: need to review ASME 11
