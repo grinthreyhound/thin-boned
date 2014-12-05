@@ -18,8 +18,10 @@ format lasttime %td
 //create a new entry date
 gen enter = lasttime-456
 
-//drop the index date events:
-drop if lasttime==eventdate
+//prepare to drop the index date events, but don't do it yet!:
+//gen indexevent = 1 if lasttime==eventdate
+
+//drop if lasttime==eventdate
 
 //need a matching variable: strings not allowed, so number them: 
 by id: generate mgroup = id if case_control ==1
@@ -46,19 +48,44 @@ egen z = max(y), by(id)
 *gen duration = lasttime - firstdate
 *sum duration
 
-//to use Xt poisson need to xtset the data: delare it to be panel data
-//cant use string id so need to group this
+//to use Xt poisson need to xtset the data: delare it to be panel data: xtset panelvar timevar
+//xtsetting is a new command, //Panel data assumes there have been observations I think, so STset/stsplit first
+//cant use string id so need to group this  NB: if want to keep labels could use : encode id,gen(numid) 
 egen numid =group(id)
+
 preserve
-xtset numid eventdate
+stset eventdate, id(id) fail(failure) exit(time .) origin(enter) scale(1)
+stsplit earlylate, at(5(5)365) after(enter) 
+stset, clear
+//now need to sort out multiples: casued by some presenting >1 time in stplit period
+//generate dup to count duplicates
+sort numid earlylate
+quietly by numid earlylate: gen dup = cond(_N==1,0,_n)
+//get the number of events in each duplicated time period
+by numid earlylate: egen events = max(dup)
+//drop the duplicates but keep the number of events
+drop if dup<events
+//now redefine the failures to be the number of events: failure is now the number of events in the time period
+replace  = events if events>failure
+
+
+
+
+
+
+xtset numid earlylate
+
+
+//now try poisson with random effects model applied to the matching variable: need to review ASME 11
+//xtpoisson - poisson regression on xtset panel data
+//xtpoisson depvar indepvars   if   in weight , re RE options 
+//irr - reports incident rate ratios
+
+
+
+xtpoisson failure case_control, irr
+
 
 //splitting the data into time periods: lexis expansion
 
 //stsplit earlylate, at(5(5)282) after(enter) 
-
-//now try poisson with random effects model applied to the matching variable: need to review ASME 11
-
-*xtpoisson case_control, exp(clusterid) irr
-
-xtpoisson i., i(G) //not appropriate - actually don't need to declare st first, as will break down via lexis expansion.
-
