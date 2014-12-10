@@ -64,7 +64,7 @@ drop if dup<events
 replace failure = events if events>failure
 
 //drop the last events - the ones selected upon, but only if there are no multiples in that time period:
-drop if lasttime==eventdate & failure==1
+//drop if lasttime==eventdate & failure==1
 replace failure=failure-1 if lasttime==eventdate & failure!=.
 //now we have panel data with time from event in earlylate and number of events in each time period in failure
 *duplicates earlylate numid
@@ -72,15 +72,15 @@ replace failure=failure-1 if lasttime==eventdate & failure!=.
 *xtpoisson case_control i.earlylate, irr exp(failure)
 
 preserve
-drop if earlylate !=450
+keep if ealrlylate=450
 poisson failure case_control, irr
 restore
 preserve
-drop if earlylate !=420
+keep if ealrlylate=420
 poisson failure case_control, irr
 restore 
 preserve
-drop if earlylate !=390
+keep if ealrlylate=390
 poisson failure case_control, irr
 restore
 
