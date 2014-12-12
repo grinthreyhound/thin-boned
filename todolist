@@ -1,7 +1,7 @@
 //2 valid approaches: conditional poisson regression or inserting the matching set into poisson as ranom effect variable.
 //though likely that accounting for matching will make little difference so can do sensitivity analysis to that effect
 //Using own date confirmed as the right thing to do.  
-//
+//NB data definitely overdispersed, so negative binomial (xtpoisson) appropriate. 
 
 //get the data
 //start with a small section
@@ -18,6 +18,9 @@ format lasttime %td
 
 //create a new entry date
 gen enter = lasttime-456
+
+//and new scaling for events: time before lasttime
+gen studyeventdate= eventdate - lasttime
 
 //need a variable for any failure:
 generate failure=1
@@ -63,43 +66,50 @@ quietly by numid earlylate: gen dup = cond(_N==1,0,_n)
 by numid earlylate: egen events = max(dup)
 //drop the duplicates but keep the number of events
 drop if dup<events
+//Make failure missing values ==0
+recode failure(.=0)
 //now redefine the failures to be the number of events: failure is now the number of events in the time period
 replace failure = events if events>failure
 
 //drop the last events - the ones selected upon, but only if there are no multiples in that time period:
-replace failure=failure-1 if lasttime==eventdate & failure!=.
+replace failure=failure-1 if lasttime==eventdate & failure!=0
 //now we have panel data with time from event in earlylate and number of events in each time period in failure
 //Need to turn earlylate into an ordinal thingy
 recode earlylate (0=1) (444=2) (447=3) (450=4) (453=5)
 *duplicates report earlylate numid
-xtset numid 
+xtset clusterid
 *xtpoisson failure case_control, irr 
 
 preserve
 keep if earlylate==1
 xtpoisson failure case_control, irr
 restore
-//0.96 p0.111
+//
 preserve
 keep if earlylate==2
 xtpoisson failure case_control, irr
 restore 
-//not solvable but poisson only gives 0.94 p0.7
+//
 preserve
 keep if earlylate==3
 xtpoisson failure case_control, irr
 restore
-//0.97 p0.8
+//
 preserve
 keep if earlylate==4
 xtpoisson failure case_control, irr
 restore
-//not converging, poisson only: 0.93 p0.6
+//
 preserve
 keep if earlylate==5
 xtpoisson failure case_control, irr
 restore
-//2.26, p<<0.001
+//
 
 //need to be thinking about doing the appropriate graphs.  
+//for this : load up the dataset again
+//add up the number of events at each studyeventdate
+egen casesum = total(failure) if case_control==0, by (studyeventdate) 
+egen controlsum = total(failure) if case_control==1, by(studyeventdate) 
 
+twoway bar casesum controlsum studyev
