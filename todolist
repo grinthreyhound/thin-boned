@@ -108,8 +108,14 @@ restore
 
 //need to be thinking about doing the appropriate graphs.  
 //for this : load up the dataset again
-//add up the number of events at each studyeventdate
-egen casesum = total(failure) if case_control==0, by (studyeventdate) 
-egen controlsum = total(failure) if case_control==1, by(studyeventdate) 
+//add up the number of events at each studyeventdate, but need to remove the last one - to prevent double counting 
+egen casesum = total(failure) if case_control==1, by (studyeventdate) 
+egen casecount = count(numid) if case_control==1
+gen caserate = 1000*casesum/casecount
 
-twoway bar casesum controlsum studyev
+egen controlsum = total(failure) if case_control==0, by(studyeventdate) 
+egen controlcount = count(numid) if case_control==0
+gen controlrate = 1000*controlsum/controlcount
+
+
+twoway bar caserate controlrate studyev
