@@ -21,6 +21,7 @@ gen enter = lasttime-456
 
 //and new scaling for events: time before lasttime
 gen studyeventdate= eventdate - lasttime
+replace studyeventdate = sqrt(studyeventdate^2)
 
 //need a variable for any failure:
 generate failure=1
@@ -58,7 +59,7 @@ replace mgroup = case_id if case_control ==0
 egen clusterid = group(mgroup)
 
 
-//now need to sort out multiples: casued by some presenting >1 time in stplit period
+//now need to sort out multiples: casued by some presenting >1 time in stplit period (including >1 per day for some)
 //generate dup to count duplicates
 sort numid earlylate
 quietly by numid earlylate: gen dup = cond(_N==1,0,_n)
@@ -104,18 +105,4 @@ preserve
 keep if earlylate==5
 xtpoisson failure case_control, irr
 restore
-//
 
-//need to be thinking about doing the appropriate graphs.  
-//for this : load up the dataset again
-//add up the number of events at each studyeventdate, but need to remove the last one - to prevent double counting 
-egen casesum = total(failure) if case_control==1, by (studyeventdate) 
-egen casecount = count(numid) if case_control==1
-gen caserate = 1000*casesum/casecount
-
-egen controlsum = total(failure) if case_control==0, by(studyeventdate) 
-egen controlcount = count(numid) if case_control==0
-gen controlrate = 1000*controlsum/controlcount
-
-
-twoway bar caserate controlrate studyev
