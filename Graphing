@@ -1,0 +1,43 @@
+//get the data
+//start with a small section
+set memory 1g
+cd "H:\JOE\THIN"
+use in 1/1000 using consultation15_ss2_CC.dta
+*use consultation15_ss2_CC.dta
+// case is 1, control is 2, recode this, convert id from string to numeric:
+recode case_control (2=0)
+egen numid =group(id)
+//create new index date: where it is the last contact in the record:
+
+by id, sort: egen lasttime = max(eventdate)
+format lasttime %td
+
+//create a new entry date
+gen enter = lasttime-456
+
+//and new scaling for events: time before lasttime
+gen studyeventdate= eventdate - lasttime
+*replace studyeventdate = sqrt(studyeventdate^2)
+
+//need a variable for any failure:
+generate failure=1
+
+//need to be thinking about doing the appropriate graphs.  
+//add up the number of events at each studyeventdate, but need to remove the last one - to prevent double counting 
+drop if studyeventdate==0
+
+egen casesum = total(failure) if case_control==1, by (studyeventdate) 
+
+by numid, sort: gen nvals = _n==1 
+
+egen casecount = count(nvals), by(case_control)
+
+gen caserate = 1000*casesum/casecount 
+
+egen controlsum = total(failure) if case_control==0, by(studyeventdate) 
+egen controlcount = count(nvals) if case_control==0
+gen controlrate = 1000*controlsum/controlcount
+
+preserve
+drop if studyeventdate<-30
+scatter controlrate caserate studyeventdate
