@@ -102,57 +102,16 @@ recode earlylate (0=13) (7=12) (14=11) (21=10) (28=9) (35=8) (42=7) (49=6) (56=5
 xtset clusterid
 *xtpoisson failure case_control, irr 
 
+foreach i of num 1/13 {
 preserve
-keep if earlylate==0
+keep if earlylate==`i'
 xtpoisson failure case_control, irr
 restore
-//
+}
+
+//what's going on in week-2?
 preserve
-keep if earlylate==1
-xtpoisson failure case_control, irr
-restore 
-//
-preserve
-keep if earlylate==3
-xtpoisson failure case_control, irr
-restore
-//
-preserve
-keep if earlylate==4
-xtpoisson failure case_control, irr
-restore
-//
-preserve
-keep if earlylate==5
-xtpoisson failure case_control, irr
-restore
-preserve
-keep if earlylate==0
-xtpoisson failure case_control, irr
-restore
-//
-preserve
-keep if earlylate==0
-xtpoisson failure case_control, irr
-restore
-//
-preserve
-keep if earlylate==0
-xtpoisson failure case_control, irr
-restore
-//
-preserve
-keep if earlylate==0
-xtpoisson failure case_control, irr
-restore
-//
-preserve
-keep if earlylate==0
-xtpoisson failure case_control, irr
-restore
-//
-preserve
-keep if earlylate==0
-xtpoisson failure case_control, irr
-restore
-//
+tab failure case_cont if earlylate==-2
+
+
+
