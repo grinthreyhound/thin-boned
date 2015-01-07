@@ -111,7 +111,12 @@ restore
 
 //what's going on in week-2?
 preserve
-tab failure case_cont if earlylate==-2
-
-
+tab failure case_cont if earlylate==2
+keep if earlylate==2
+tab case_cont failure, row //looks like in week before kids much more likely to have >1 event if controls.
+//This may be the nature of the high attending controls - the sensitivity analysis using cases as own controls. 
+//also might be in nature of their attendances - breakdown will be interesting
+//might be that small number of higher attendances are overrepresented as larger number of controls
+xtpoisson failure i.case_control, irr
+restore
 
