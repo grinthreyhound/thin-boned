@@ -8,12 +8,14 @@
 *set memory 1g
 cd "H:\JOE\THIN"
 //use in 1/1000 using consults3m.dta
-use consults3m.dta
+//use consults3m.dta
 //use in 1/1000 using consultation15_ss2_CC.dta
+use consultation15_ss2_CC.dta
 // for the 15 month data case is 1, control is 2, recode this:
-//recode case_control (2=0)
+recode case_control (2=0)
 
-// create new index date: where it is the last contact in the record:(because of the looseness of matching in time)
+// create new index date: where it is the last contact in the record for controls only
+//(because of the looseness of matching in time)
 // in the 3 month dataset there are 5000 records where there is no eventdate...
 // need to check them in the 15 month data:ids of some missing ones: 
 *id	case	indexdate
@@ -36,19 +38,20 @@ use consults3m.dta
 *a670604dc	6EOP	29dec2009 - too far
 *a670604dc	6MpT	17feb2010 - too far
 
-
-
-
-
+//drop any entries more than 3 months before the new indexdate
 by id, sort: egen lasttime = max(eventdate)
+//replace lasttime = indexdate if case_control==1
 format lasttime %td
+gen timebeforeindex = lasttime-eventdate
+drop if timebeforeindex >91
+
+//create a new entry date
+gen enter = lasttime-91
 
 //For the whole dataset only: check duration of time in study with events occuring: 15month data 456 days,3 month data 90 days
 *by id, sort: egen firstdate = min(eventdate)
 *gen duration = lasttime - firstdate
 *sum duration
-//create a new entry date
-gen enter = lasttime-90
 
 //and new scaling for events: time before lasttime
 gen studyeventdate= eventdate - lasttime
@@ -62,9 +65,9 @@ generate failure=1
 //Need to specify exit or else it terminates after first failure
 //Seem to have missing eventdates, therefore we need to 
 
-preserve
+*preserve
 stset eventdate, id(id) fail(failure) exit(time .) origin(enter) scale(1)
-stsplit earlylate, at(6(7)90) after(enter) 
+stsplit earlylate, at(7(7)91) after(enter) 
 stset, clear
 //need a matching variable: strings not allowed, so number them: (can't do this before stsetting as doesn't expand clusterid)
 sort id
@@ -72,6 +75,10 @@ by id: generate mgroup = id if case_control ==1
 replace mgroup = case_id if case_control ==0
 egen clusterid = group(mgroup)
 
+//to use Xt poisson need to xtset the data: delare it to be panel data: xtset panelvar timevar
+//xtsetting is a new command, //Panel data assumes there have been observations I think, so STset/stsplit first
+//cant use string id so need to group this  NB: if want to keep labels could instead use : encode id,gen(numid) 
+egen numid =group(id)
 
 //now need to sort out multiples: casued by some presenting >1 time in stplit period (including >1 per day for some)
 //generate dup to count duplicates
@@ -86,27 +93,22 @@ recode failure(.=0)
 //now redefine the failures to be the number of events: failure is now the number of events in the time period
 replace failure = events if events>failure
 
-//to use Xt poisson need to xtset the data: delare it to be panel data: xtset panelvar timevar
-//xtsetting is a new command, //Panel data assumes there have been observations I think, so STset/stsplit first
-//cant use string id so need to group this  NB: if want to keep labels could instead use : encode id,gen(numid) 
-egen numid =group(id)
-
 //drop the last events - the ones selected upon, but only if there are no multiples in that time period:
 replace failure=failure-1 if lasttime==eventdate & failure!=0
 //now we have panel data with time from event in earlylate and number of events in each time period in failure
-//Need to turn earlylate into an ordinal thingy
-recode earlylate (0=1) (444=2) (447=3) (450=4) (453=5)
+//Need to turn earlylate into an ordinal thingy of weeks before index
+recode earlylate (0=13) (7=12) (14=11) (21=10) (28=9) (35=8) (42=7) (49=6) (56=5) (63=4) (70=3) (77=2) (84=1) 
 *duplicates report earlylate numid
 xtset clusterid
 *xtpoisson failure case_control, irr 
 
 preserve
-keep if earlylate==1
+keep if earlylate==0
 xtpoisson failure case_control, irr
 restore
 //
 preserve
-keep if earlylate==2
+keep if earlylate==1
 xtpoisson failure case_control, irr
 restore 
 //
@@ -124,4 +126,33 @@ preserve
 keep if earlylate==5
 xtpoisson failure case_control, irr
 restore
-
+preserve
+keep if earlylate==0
+xtpoisson failure case_control, irr
+restore
+//
+preserve
+keep if earlylate==0
+xtpoisson failure case_control, irr
+restore
+//
+preserve
+keep if earlylate==0
+xtpoisson failure case_control, irr
+restore
+//
+preserve
+keep if earlylate==0
+xtpoisson failure case_control, irr
+restore
+//
+preserve
+keep if earlylate==0
+xtpoisson failure case_control, irr
+restore
+//
+preserve
+keep if earlylate==0
+xtpoisson failure case_control, irr
+restore
+//
