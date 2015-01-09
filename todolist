@@ -10,63 +10,51 @@ cd "H:\JOE\THIN"
 //use in 1/1000 using consults3m.dta
 //use consults3m.dta
 //use in 1/1000 using consultation15_ss2_CC.dta
-use consultation15_ss2_CC.dta
+//use consultation15_ss2_CC.dta
+//create a smaller file:
+*use "H:\JOE\THIN\consultation15_ss2withcats.dta"
+//drop some blank/unneeded columns:
+*drop  medcode_p1 prescomplaint1 medcode_p2 prescomplaint2 medcode_s1 symptom1 medcode_s2 symptom2 medcode_s3 symptom3 medcode_s4 symptom4 medcode_s5 symptom5 medcode_s6 symptom6 medcode_s7 symptom7 medcode_s8 symptom8 medcode_e1 medcode_e1 examination1 medcode_e2 examination2 medcode_e3 examination3 medcode_e4 examination4 medcode_d1 diagnosis1 medcode_d2 diagnosis2 medcode_d3 diagnosis3 medcode_d4 diagnosis4 medcode_d5 diagnosis5 medcode_d6 diagnosis6 medcode_d7 diagnosis7 medcode_d8 diagnosis8 medcode_i1 intervention1 medcode_i2 intervention2 medcode_i3 intervention3 medcode_i4 intervention4 medcode_i5 intervention5 medcode_i6 intervention6 medcode_i7 intervention7 medcode_i8 intervention8 medcode_i9 intervention9 medcode_i10 intervention10 medcode_i11 intervention11 medcode_m1 management1 medcode_m2 management2 medcode_m3 management3 medcode_m4 management4 medcode_m5 management5 medcode_m6 management6 medcode_m7 management7 medcode_m8 management8 medcode_m9 management9
+*save "H:\JOE\THIN\consult15CatsSimple.dta"
+
+use "H:\JOE\THIN\consult15CatIndex.dta"
 // for the 15 month data case is 1, control is 2, recode this:
 recode case_control (2=0)
 
 // create new index date: where it is the last contact in the record for controls only
-//(because of the looseness of matching in time)
-// in the 3 month dataset there are 5000 records where there is no eventdate...
-// need to check them in the 15 month data:ids of some missing ones: 
-*id	case	indexdate
-*a670603EC	1	14jul2010
-*a670603UE	1	14oct2008
-*a670604Bh	0	06oct2008
-*a670604dc	0	24aug2010
+//(because of the looseness of matching in time) 
+//problem - no data exists for after the index dates
 
-*15month
-*id	consultid	eventdate
-*a670603EC	5Zym	15apr2009 - too far
-*a670603EC	6IaR	25jan2010 - too far
-*a670603EC	6du0	20may2010 - Nail disorder
-*a670603UE	2e2A	05mar2008 - too far
-*a670603UE	54Ms	23sep2008 - ENT symptoms
-*a670603UE	5563	26sep2008 - ENT symptoms
-*a670604Bh	2pyf	12nov2007 - too far
-*a670604Bh	55zI	01oct2008 - discussion
-*a670604dc	6EJE	24dec2009 - too far
-*a670604dc	6EOP	29dec2009 - too far
-*a670604dc	6MpT	17feb2010 - too far
 
 //drop any entries more than 3 months before the new indexdate
-by id, sort: egen lasttime = max(eventdate)
-//replace lasttime = indexdate if case_control==1
-format lasttime %td
-gen timebeforeindex = lasttime-eventdate
+//by id, sort: egen lasttime = max(eventdate)
+//format lasttime %td
+//replace lasttime = indexdate if case_control==0
+gen timebeforeindex = indexdate-eventdate
 drop if timebeforeindex >91
 
 //create a new entry date
-gen enter = lasttime-91
+gen enter = indexdate-91
 
-//For the whole dataset only: check duration of time in study with events occuring: 15month data 456 days,3 month data 90 days
+//For the whole dataset only: check duration of time in study with events occuring: 15 month data 456 days,3 month data 90 days
 *by id, sort: egen firstdate = min(eventdate)
 *gen duration = lasttime - firstdate
 *sum duration
 
 //and new scaling for events: time before lasttime
-gen studyeventdate= eventdate - lasttime
-replace studyeventdate = sqrt(studyeventdate^2)
+*gen studyeventdate= eventdate - lasttime
+*replace studyeventdate = sqrt(studyeventdate^2)
 
 //need a variable for any failure:
-generate failure=1
+*generate failure=1
 
 //need to compare baseline contacts between cases and controls: 
 //stset the data to indicate it is survival time data with multiple lines per person (specify id)
 //Need to specify exit or else it terminates after first failure
-//Seem to have missing eventdates, therefore we need to 
+//Some duplicates where 
 
-*preserve
-stset eventdate, id(id) fail(failure) exit(time .) origin(enter) scale(1)
+preserve
+stset eventdate, id(id) fail(consult_group3) exit(time .) origin(enter) scale(1)
 stsplit earlylate, at(7(7)91) after(enter) 
 stset, clear
 //need a matching variable: strings not allowed, so number them: (can't do this before stsetting as doesn't expand clusterid)
