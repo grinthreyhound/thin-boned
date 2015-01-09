@@ -7,34 +7,34 @@
 //start with a small section
 *set memory 1g
 cd "H:\JOE\THIN"
-//use in 1/1000 using consults3m.dta
-//use consults3m.dta
-//use in 1/1000 using consultation15_ss2_CC.dta
-//use consultation15_ss2_CC.dta
+
 //create a smaller file:
-*use "H:\JOE\THIN\consultation15_ss2withcats.dta"
+*use ""H:\JOE\THIN\15m_3w_ss2.dta""
 //drop some blank/unneeded columns:
 *drop  medcode_p1 prescomplaint1 medcode_p2 prescomplaint2 medcode_s1 symptom1 medcode_s2 symptom2 medcode_s3 symptom3 medcode_s4 symptom4 medcode_s5 symptom5 medcode_s6 symptom6 medcode_s7 symptom7 medcode_s8 symptom8 medcode_e1 medcode_e1 examination1 medcode_e2 examination2 medcode_e3 examination3 medcode_e4 examination4 medcode_d1 diagnosis1 medcode_d2 diagnosis2 medcode_d3 diagnosis3 medcode_d4 diagnosis4 medcode_d5 diagnosis5 medcode_d6 diagnosis6 medcode_d7 diagnosis7 medcode_d8 diagnosis8 medcode_i1 intervention1 medcode_i2 intervention2 medcode_i3 intervention3 medcode_i4 intervention4 medcode_i5 intervention5 medcode_i6 intervention6 medcode_i7 intervention7 medcode_i8 intervention8 medcode_i9 intervention9 medcode_i10 intervention10 medcode_i11 intervention11 medcode_m1 management1 medcode_m2 management2 medcode_m3 management3 medcode_m4 management4 medcode_m5 management5 medcode_m6 management6 medcode_m7 management7 medcode_m8 management8 medcode_m9 management9
+ // for the 15 month data case is 1, control is 2, recode this:
+*recode case_control (2=0)
 *save "H:\JOE\THIN\consult15CatsSimple.dta"
 
-use "H:\JOE\THIN\consult15CatIndex.dta"
-// for the 15 month data case is 1, control is 2, recode this:
-recode case_control (2=0)
+use "H:\JOE\THIN\15m_3w_ss2.dta"
 
 // create new index date: where it is the last contact in the record for controls only
-//(because of the looseness of matching in time) 
-//problem - no data exists for after the index dates
+//(because of the looseness of matching in time +/- 3 weeks) 
 
+by id, sort: egen lasttime = max(eventdate)
+format lasttime %td
+replace indexdate = lasttime if case_control==0
+
+//Drop events that occured on the matching date:
+drop if eventdate==indexdate
 
 //drop any entries more than 3 months before the new indexdate
-//by id, sort: egen lasttime = max(eventdate)
-//format lasttime %td
-//replace lasttime = indexdate if case_control==0
 gen timebeforeindex = indexdate-eventdate
 drop if timebeforeindex >91
 
 //create a new entry date
 gen enter = indexdate-91
+format enter %td
 
 //For the whole dataset only: check duration of time in study with events occuring: 15 month data 456 days,3 month data 90 days
 *by id, sort: egen firstdate = min(eventdate)
@@ -51,7 +51,12 @@ gen enter = indexdate-91
 //need to compare baseline contacts between cases and controls: 
 //stset the data to indicate it is survival time data with multiple lines per person (specify id)
 //Need to specify exit or else it terminates after first failure
-//Some duplicates where 
+
+//there are duplicates and need to work out where these came from: ?genuine or not
+//drop them for now but eill need to revisit this. 
+duplicates drop id eventdate, force
+
+//Want to do it in terms of the time after entrytime
 
 preserve
 stset eventdate, id(id) fail(consult_group3) exit(time .) origin(enter) scale(1)
