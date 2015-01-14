@@ -26,7 +26,7 @@ format lasttime %td
 replace indexdate = lasttime if case_control==0
 
 //Drop events that occured on the matching date:
-drop if eventdate==indexdate
+*drop if eventdate==indexdate
 
 //drop any entries more than 3 months before the new indexdate
 gen timebeforeindex = indexdate-eventdate
