@@ -63,8 +63,25 @@ replace failtype=4 if  consult_group4==1
 //drop them for now but eill need to revisit this. Looks like there are duplicates on index and non index dates. ?type
 duplicates drop id eventdate, force
 
-//Want to do it in terms of the time after entrytime
-//there is an error in the stsetting
+//need to convert snapshot data to survival time data: reshape to wide then can add variables and reshape back to long... 
+preserve
+//need to number the events
+sort id eventdate
+by id: generate n1 = _n
+//drop some we don't need
+drop consult_group1 consult_group2 consult_group3 consult_group4 consultid
+//reshape the data
+reshape wide eventdate weight weight_centile BMI height height_centile case_id locate category timebeforeindex failtype , i(id) j(n1)
+//add in an entrydate:
+generate eventdate0=indexdate-91
+generate failtype0=0
+//add in an exitdate (the indexdate, and put it in the first empty space)
+foreach i of num 2/15 {
+replace eventdate`i' = indexdate if eventdate`i'-1!=.
+*replace failtype`i' = 99 if failtype`i'-1!=.
+}
+if eventdate`i'==.
+& (eventdate`i'-1!=.))
 
 preserve
 stset eventdate, id(id) fail(failtype==4) exit(indexdate) origin(enter) enter(enter) scale(1)
