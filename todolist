@@ -17,6 +17,15 @@ cd "H:\JOE\THIN"
 *save "H:\JOE\THIN\consult15CatsSimple.dta"
 
 use "H:\JOE\THIN\15m_3w_ss2.dta"
+drop category
+//there are some missing bits - case_id and indexdate are not there for the newly added consultations
+by id, sort: replace case_id = case_id[_n+1] if case_id==""
+by id, sort: replace case_id = case_id[_n+1] if case_id==""
+by id, sort: replace case_id = case_id[_n+1] if case_id==""
+
+by id, sort: replace indexdate = indexdate[_n+1] if indexdate==.
+by id, sort: replace indexdate = indexdate[_n+1] if indexdate==.
+by id, sort: replace indexdate = indexdate[_n+1] if indexdate==.
 
 // create new index date: where it is the last contact in the record for controls only
 //(because of the looseness of matching in time +/- 3 weeks) 
@@ -64,27 +73,36 @@ replace failtype=4 if  consult_group4==1
 duplicates drop id eventdate, force
 
 //need to convert snapshot data to survival time data: reshape to wide then can add variables and reshape back to long... 
-preserve
+
 //need to number the events
 sort id eventdate
 by id: generate n1 = _n
 //drop some we don't need
 drop consult_group1 consult_group2 consult_group3 consult_group4 consultid
 //reshape the data
-reshape wide eventdate weight weight_centile BMI height height_centile case_id locate category timebeforeindex failtype , i(id) j(n1)
-//add in an entrydate:
-generate eventdate0=indexdate-91
+reshape wide eventdate weight weight_centile BMI height height_centile case_id locate timebeforeindex failtype , i(id) j(n1)
+//add in an entrydate: make the fail type be 0
+generate eventdate0=indexdate-91 
 generate failtype0=0
-//add in an exitdate (the indexdate, and put it in the first empty space)
-foreach i of num 2/15 {
-replace eventdate`i' = indexdate if eventdate`i'-1!=.
-*replace failtype`i' = 99 if failtype`i'-1!=.
+//add in another eventdate for final index date (for n=15)
+generate eventdate16=.
+generate failtype16=.
+//add in the exitdate (the indexdate, and put it in the first empty space) and make the indexdate failure ==99
+foreach i of num 16/2 {
+ local j = `i'-1
+replace eventdate`i' = indexdate if eventdate`j'!=. & eventdate`i'==.
+replace failtype`i' = 99 if failtype`j'!=. & failtype`i'==.
 }
-if eventdate`i'==.
-& (eventdate`i'-1!=.))
 
-preserve
-stset eventdate, id(id) fail(failtype==4) exit(indexdate) origin(enter) enter(enter) scale(1)
+*preserve
+
+//now lets reshape the data to be long...
+reshape long eventdate weight weight_centile BMI height height_centile case_id locate timebeforeindex failtype, i(id) j(J)
+//drop lines without data
+drop if eventdate==.
+
+*preserve
+stset eventdate, id(id) fail(failtype) exit(time .) origin(enter) enter(enter) scale(1)
 stsplit earlylate, at(7(7)91) after(enter) 
 stset, clear
 //need a matching variable: strings not allowed, so number them: (can't do this before stsetting as doesn't expand clusterid)
@@ -93,10 +111,18 @@ by id: generate mgroup = id if case_control ==1
 replace mgroup = case_id if case_control ==0
 egen clusterid = group(mgroup)
 
+egen ngroup = max(clusterid), by(id) 
+
 //to use Xt poisson need to xtset the data: delare it to be panel data: xtset panelvar timevar
 //xtsetting is a new command, //Panel data assumes there have been observations I think, so STset/stsplit first
 //cant use string id so need to group this  NB: if want to keep labels could instead use : encode id,gen(numid) 
 egen numid =group(id)
+
+//create failures from the failtype
+*gen failure=1 if failtype==1
+*gen failure=1 if failtype==2
+*gen failure=1 if failtype==4
+gen failure=1 if failtype==1 | failtype==2 | failtype==4
 
 //now need to sort out multiples: casued by some presenting >1 time in stplit period (including >1 per day for some)
 //generate dup to count duplicates
@@ -116,9 +142,13 @@ replace failure=failure-1 if lasttime==eventdate & failure!=0
 //now we have panel data with time from event in earlylate and number of events in each time period in failure
 //Need to turn earlylate into an ordinal thingy of weeks before index
 recode earlylate (0=13) (7=12) (14=11) (21=10) (28=9) (35=8) (42=7) (49=6) (56=5) (63=4) (70=3) (77=2) (84=1) 
+
 *duplicates report earlylate numid
 xtset clusterid
 *xtpoisson failure case_control, irr 
+
+
+
 
 foreach i of num 1/13 {
 preserve
