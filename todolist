@@ -120,28 +120,30 @@ egen ngroup = max(clusterid), by(id)
 egen numid =group(id)
 
 //create failures from the failtype
-gen failure=1 if failtype==1
-*gen failure=1 if failtype==2
+*gen failure=1 if failtype==1
+gen failure=1 if failtype==2
 *gen failure=1 if failtype==4
 *gen failure=1 if failtype==1 | failtype==2 | failtype==4
 //Make failure missing values ==0
 recode failure(.=0)
 
+*preserve
 //now need to sort out multiples: casued by some presenting >1 time in stplit period (including >1 per day for some)
-//generate dup to count duplicates
-sort numid earlylate
-quietly by numid earlylate: gen dup = cond(_N==1,0,_n)
+//generate dup to count duplicates (of each event type, not total events in the time period!!)
+sort numid earlylate failure
+quietly by numid earlylate failure: gen dup = cond(_N==1,0,_n) 
 //get the number of events in each duplicated time period
-by numid earlylate: egen events = max(dup)
+by numid earlylate failure: egen events = max(dup)
 //drop the duplicates but keep the number of events
 drop if dup<events
-
-
+drop if events>0 & failure==0
 //now redefine the failures to be the number of events: failure is now the number of events in the time period
 replace failure = events if events>failure
+//now drop the duplicates of id eventdate where failure =0 but this doesn't help as earlylate missing for some...
+duplicates drop id eventdate if failure==0
 
 //drop the last events - the ones selected upon, but only if there are no multiples in that time period: 
-***This done earlier?
+***This done earlier because failtype = 0
 *****replace failure=failure-1 if lasttime==eventdate & failure!=0
 //now we have panel data with time from event in earlylate and number of events in each time period in failure
 //Need to turn earlylate into an ordinal thingy of weeks before index
@@ -152,17 +154,28 @@ recode earlylate (0=13) (7=12) (14=11) (21=10) (28=9) (35=8) (42=7) (49=6) (56=5
 *xtpoisson failure case_control, irr 
 
 xtset ngroup
-preserve
-keep if earlylate==1
-xtpoisson events case_control, irr
-restore
 
+
+//for all events: Group 3
 foreach i of num 1/13 {
 preserve
 keep if earlylate==`i'
-xtpoisson failure case_control, irr
+xtpoisson failure case_control, irr iter(25)
 restore
 }
+
+//for event 1 (normal surgery/home visit)//for event 2 (phone calls)//for event 4 (OOH only)
+*tab earlylate failure 
+foreach i of num 1 {
+preserve
+keep if earlylate==`i'
+xtpoisson failure case_control, irr 
+restore
+}
+
+//there seems to be more with 2 OOH than one
+
+
 
 
 
