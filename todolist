@@ -172,17 +172,6 @@ xtpoisson failure case_control, irr iter(30)
 restore
 }
 
-//for event 1 (normal surgery/home visit)//for event 2 (phone calls)//for event 4 (OOH only)
-*tab earlylate failure 
-foreach i of num 1 {
-preserve
-keep if earlylate==`i'
-xtpoisson failure case_control, irr 
-restore
-}
-
-//there seems to be more with 2 OOH than one
-
 
 
 
