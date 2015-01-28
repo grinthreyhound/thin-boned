@@ -141,6 +141,8 @@ drop if events>0 & failure==0
 replace failure = events if events>failure
 //now drop the duplicates of id eventdate where failure =0 but this doesn't help as earlylate missing for some...
 duplicates drop id eventdate if failure==0
+drop if earlylate==.
+
 
 //drop the last events - the ones selected upon, but only if there are no multiples in that time period: 
 ***This done earlier because failtype = 0
