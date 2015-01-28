@@ -123,10 +123,11 @@ egen ngroup = max(clusterid), by(id)
 egen numid =group(id)
 
 //create failures from the failtype
-*gen failure=1 if failtype==1
-gen failure=1 if failtype==2
-*gen failure=1 if failtype==4
 *gen failure=1 if failtype==1 | failtype==2 | failtype==4
+*gen failure=1 if failtype==1
+*gen failure=1 if failtype==2
+gen failure=1 if failtype==4
+
 //Make failure missing values ==0
 recode failure(.=0)
 
@@ -151,10 +152,10 @@ quietly by numid earlylate:gen dup1 = cond(_N==1,0,_n)
 
 drop if dup1>0 & failure==0
 //check no duplicates and sensecheck earlylate
-*duplicates report id earlylate
-*tab earlylate
-*tab failure
-*tab earlylate failure
+duplicates report id earlylate
+tab earlylate
+tab failure
+tab earlylate failure
 
 //now we have panel data with time from event in earlylate and number of events in each time period in failure
 
@@ -167,7 +168,7 @@ foreach i of num 1/13 {
 preserve
 display `i'
 keep if earlylate==`i'
-xtpoisson failure case_control, irr 
+xtpoisson failure case_control, irr iter(30)
 restore
 }
 
