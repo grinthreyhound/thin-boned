@@ -27,6 +27,15 @@ by id, sort: replace indexdate = indexdate[_n+1] if indexdate==.
 by id, sort: replace indexdate = indexdate[_n+1] if indexdate==.
 by id, sort: replace indexdate = indexdate[_n+1] if indexdate==.
 
+//Need to remove controls and replace with cases
+//start by numbering the id to give another identification number
+egen numid =group(id)
+
+//then delete controls
+drop if case_control ==0
+//Then create controls from cases
+replace case_control = 0 if XXXXX
+
 // create new index date: where it is the last contact in the record for controls only
 //(because of the looseness of matching in time +/- 3 weeks) 
 
