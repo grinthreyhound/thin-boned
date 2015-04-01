@@ -142,10 +142,10 @@ egen ngroup = max(clusterid), by(numid)
 egen numid =group(id)
 
 //create failures from the failtype
-gen failure=1 if failtype==1 | failtype==2 | failtype==4
+*gen failure=1 if failtype==1 | failtype==2 | failtype==4
 *gen failure=1 if failtype==1
 *gen failure=1 if failtype==2
-*gen failure=1 if failtype==4
+gen failure=1 if failtype==4
 
 //Make failure missing values ==0
 recode failure(.=0)
