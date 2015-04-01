@@ -1,0 +1,29 @@
+
+set memory 1g
+use "H:\JOE\THIN\consultation15_ss2.dta", clear
+
+
+egen symptgroup = group(symptom1)
+sort symptgroup
+by symptgroup: gen symptfreq = _N
+sort symptfreq symptom1
+
+collapse symptfreq, by (symptom1)
+sort symptfreq
+
+//consults3m.dta has most of the data:
+
+use "H:\JOE\THIN\consults3m.dta", clear
+
+egen symptgroup = group(symptom1)
+sort symptgroup
+by symptgroup: gen symptfreq = _N
+sort symptfreq symptom1
+
+tab symptom1 case, col chi
+
+//in the 2 week period: Lots don't have an eventdate ?why
+gen timebeforeindex = indexdate-eventdate
+drop if timebeforeindex >14
+
+tab symptom1 case, col chi
