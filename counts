@@ -27,3 +27,15 @@ gen timebeforeindex = indexdate-eventdate
 drop if timebeforeindex >14
 
 tab symptom1 case, col chi
+
+*collapse to get number of cases and controls:
+preserve
+collapse case, by(id)
+tab case
+//8000 Vs 10000
+H:\JOE\THIN\15m_3w_ss2.dta: only has 8933: 7230 + 1703 
+
+by id, sort: replace case_con = case_con[_n+1] if case_con==0
+by id, sort: replace case_con = case_con[_n+1] if case_con==0
+by id, sort: replace case_con = case_con[_n+1] if case_con==0
+
