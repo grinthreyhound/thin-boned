@@ -5,7 +5,7 @@
 
 //get the data
 //start with a small section
-*set memory 1g
+*set memory 1g #not in SE
 cd "H:\JOE\THIN"
 
 //create a smaller file:
