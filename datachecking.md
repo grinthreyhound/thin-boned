@@ -2,6 +2,8 @@
 //should have the full 15 month data with all of them having correct dates. 
 //Wide format - one line per event
 
+//stata 11 set memory: set memory 1g
+
 use "H:\JOE\THIN\all15wide_old.dta", clear
 
 //create a new indexdate for the controls
