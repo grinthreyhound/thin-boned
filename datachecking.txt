@@ -13,11 +13,46 @@ codebook id
 
 codebook case_control
 //case =1, control =0 
-// 77059 control events
-// 23987 case events
+// 77059 control events now 85625
+// 23987 case events now 27023
+//None missing
 
-codebook eventdate
-// 35 missing - these are admin events - whilst waiting for the update, treat as indexdate
+
+codebook eventdate indexdate
+// None missing now
+
+codebook age
+//102 missing
+
+codebook dob
+//none missing
+
+codebook sex
+//102 missing
+
+codebook died
+// 102 missing
+
+codebook weight weight_cen BMI height height_centile
+//weight 110175 missing
+//weight_cen 112317 missing
+//BMI 112466 missing
+//Height 110575 missing
+//height centi;e - 112381 missing
+
+codebook typediab
+//: 15151 type 1, 11872 type 2, 85625 missing
+
+//Type of diabetes: 
+preserve
+//replace typediab = 3 if typediab==. & case_con==1
+collapse typediab case_con, by(id)
+tab typediab case_con, col
+restore
+//1302 type 1, 698 type 2, none missing and all are cases.
+
+
+
 
 replace eventdate = indexdate if eventdate==.
 
@@ -37,17 +72,6 @@ collapse sex case_con, by(id)
 tab sex case_con, col
 restore
 
-//Type of diabetes: 
-preserve
-replace typediab = 3 if typediab==. & case_con==1
-collapse typediab case_con, by(id)
-tab typediab case_con, col
-restore
-//unfortunately there are no missing diabetes classifications and there are way too may type 2s. 
-
-//BMI: height/weight not in this dataset
-
-//deprivation: not in this dataset
 
 //look at the consultation codes:
 
