@@ -1,0 +1,145 @@
+//get the data
+//start with a small section
+
+cd "H:\JOE\THIN"
+//use in 1/10 using consults3m.dta
+//or the whole thing:
+//use consults3m.dta
+//use consultation15_ss2.dta: unfortunately this doesn't have case/control coded.  
+
+use consultation15_ss2_CC.dta
+// case is 1, control is 2
+//try to draw graphs of symptoms vs time as per Bankhead paper
+
+
+//actually need to create new index date: where it is the index case for the cases and 
+//the last contact for controls:
+
+by id, sort: egen lasttime = max(eventdate)
+//gen newindex = indexdate if case==1
+//replace newindex = lasttime if case ==0
+
+
+//try to show events per person time - to begin with remember that the time at risk for cases and controls is the same (15m each)
+// reshape the data to be wide:
+
+//First create a list numbers:
+//generate order = _n
+//create a label y for each nth event that each child has
+//by id (order), sort: generate y = _n 
+//generate a variable that is the maximum of y (i.e. the number of consultations per person)
+//egen z = max(y), by(id)
+//tabulate this with column %
+//tab z case, col
+
+
+
+//need to reset the time of entry to be index date minus 15 months
+
+gen entrytime = lasttime - 456
+format entrytime %td
+
+//now reshape wide:
+//preserve
+//keep eventdate id z y case newindex entrytime
+//quietly reshape wide eventdate, i(id) j(y)
+//tab z case, col 
+//hist z, by(case)
+//restore
+
+//need to compare baseline contacts between cases and controls: 
+//stset the data to indicate is survival time data with multiple lines per person (specify id)
+//Need to specify exit or else it terminates after first failure
+
+// check duration of time in study with events occuring:
+by id, sort: egen firstdate = min(eventdate)
+gen duration = lasttime - firstdate
+sum duration
+// none are in there for >90 days??! (456 days for the 15 month data)
+
+//try using the last date they were seen: 
+gen enter = lasttime-456
+generate order = _n
+
+preserve
+stset eventdate, id(id) fail(order) exit(time .) origin(enter) scale(1)
+
+//splitting the data into time periods: lexis expansion
+
+stsplit earlylate, at(5(5)365) after(enter) 
+
+//then get rate estimates for each time period
+// drop the event dates:
+drop if earlylate==365
+
+strate case_control earlylate, per(365.25) g
+
+///there is a definite problem with the way I've been dealing with time: if I use -365 or -460
+//the earliest ones have very low rates.  Need to think about this. 
+
+
+streset 
+strate case earlylate, per(365.25) g
+
+restore
+
+
+streset fail(consult_group4)
+strate case earlylate, per(365.25) g
+
+
+streset fail(consult_group2)
+
+streset fail(consult_group1)
+
+
+
+
+preserve
+keep eventdate id y case newindex entrytime 
+quietly reshape wide eventdate, i(id) j(y)
+stset entrytime, failure(eventdate1)
+sts graph, by(case)
+//Ok but annoying scale.  
+//instead can use sts to generate a variable containning the KM survival function and plot directly
+//do this later as not obvious how to get it to work...
+//sts gen survevent1 = s
+//sts gen surv_bycase = s, by(case)
+//graph twoway line ...
+restore
+
+//counting the events per person: 
+
+//y is a variable that counts the number of events
+tab y case
+tab y case, row
+
+preserve
+keep case id y newindex eventdate
+quietly reshape wide eventdate, i(id) j(y)
+//now have one line per id, with eventdate1 through 4
+//need to generate a new variable to count the events
+gen 
+
+
+
+
+//Another approach: survial analysis
+// to do a survival type graph need to make the data 'st'
+preserve
+drop if time1==0
+quietly reshape wide eventdate , i(id) j(y)
+stset newindex, failure(consult_group2)
+sts graph, na
+restore
+
+
+// need to generate a variable that demonstartes which groups are related from case_patid
+gen cluster = case_patid if case==0 
+replace cluster = id if case==1
+
+
+
+//n.b.  deaths all after index dates:
+list birthdate indexdate deathdate eventdate if deathdate!=.
+
