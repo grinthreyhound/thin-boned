@@ -58,6 +58,12 @@ twoway scatter typediab weightz
 
 twoway hist weightz, by(typediab)
 
+//sort out BMI = weight/height in m squared
+drop BMI
+gen BMI = weight/(height/100)^2
+
+egen BMIzanthro = zanthro(BMI,ba,UK), xvar(weightage) gender(sex) gencode(male=1, female=2)
+
 
 codebook typediab
 //: 15151 type 1, 11872 type 2, 85625 missing
