@@ -1,0 +1,142 @@
+//Stata file for sense checking and setting up the data from H:\JOE\THIN\all15wide_old.dta
+//should have the full 15 month data with all of them having correct dates. 
+//Wide format - one line per event
+
+//stata 11 set memory: set memory 1g
+
+use "H:\JOE\THIN\all15wide_old.dta", clear
+
+//Examine the data: 
+codebook id 
+//there are 10,000 ids, none missing
+
+codebook case_control
+//case =1, control =0 
+// 77059 control events now 85625
+// 23987 case events now 27023
+//None missing
+
+
+codebook eventdate indexdate
+// None missing now
+
+codebook age
+//none missing
+
+codebook dob
+//none missing
+
+codebook sex
+//none missing
+
+codebook died
+// 102 missing
+
+codebook weight weight_cen BMI height height_centile
+//weight 110175 missing
+//weight_cen 112317 missing
+//BMI 112466 missing
+//Height 110575 missing
+//height centi;e - 112381 missing
+
+preserve
+
+//for centiles need to use age at time of weighing Must install zanthro if not already done
+//need height in cm
+generate weightage = eventdate-dob if weight!=.
+replace weightage = weightage/365.25
+generate heightage = eventdate-dob if height!=.
+replace heightage = heightage/365.25
+replace height = height*100 if height<2
+replace height =. if height<40
+
+egen heightzanthro = zanthro(height,ha,UK), xvar(heightage) gender(sex) gencode(male=1, female=2)
+
+egen weightzanthro = zanthro(weight,wa,UK), xvar(weightage) gender(sex) gencode(male=1, female=2)
+//plot these - can see fatter more likely to have type 2, the few skiniier ones likely type 1
+twoway scatter typediab weightz
+
+twoway hist weightz, by(typediab)
+
+
+codebook typediab
+//: 15151 type 1, 11872 type 2, 85625 missing
+
+//Type of diabetes: 
+preserve
+replace typediab = 3 if typediab==. & case_con==1
+collapse typediab case_con, by(id)
+tab typediab case_con, col
+restore
+//1202 type 1, 35 type 2, 23 DM_not stated, 740 not coded and all are cases.
+
+preserve
+replace typebymed = 3 if typediab==. & case_con==1
+collapse typebymed case_con, by(id)
+tab typebymed case_con, col
+drop if case_con==0 
+codebook type
+restore
+//1178 type1 5 type2  unknown 3 - 740, 9 - 61, . =16
+
+
+replace eventdate = indexdate if eventdate==.
+
+//Table 1 stuff: descriptive statistics: need to collapse over id: sense checked 1st with duplicates report id
+//and duplicated report age id 
+
+preserve
+collapse age case_con, by (id)
+sum age if case_con==1, d
+sum age if case_con==0, d
+restore
+//See the excel file for results
+
+//now sex: male is 1 female is 2
+preserve
+collapse sex case_con, by(id)
+tab sex case_con, col
+restore
+
+
+//look at the consultation codes:
+
+//censoring: think about start, transfer and death dates:
+// xferdate deathdate startdate enddate
+gen xfertime=xferdate-indexdate
+gen deathtime=deathdate-indexdate
+gen starttime=startdate-indexdate
+gen endtime=enddate-indexdate
+
+
+//xfer - 14 controls transferred out before experiment ended, 5 cases as well.  
+preserve
+collapse xfertime case_control, by(id)
+tab xfertime case_con
+restore
+//not clear how cases could transfer out before their indexdate
+
+//deaths - all > 180 days post indexdate, 5 cases, 3 controls
+preserve
+collapse deathtime case_con, by (id)
+tab death case_con
+restore
+
+//starttime : almost all prior to indexdate
+preserve
+collapse starttime case_con, by(id)
+hist starttime
+restore
+
+//endtime : mostly occuring post indexdate
+preserve
+collapse endtime case_con, by (id)
+tab endtime case_con
+restore
+
+
+
+
+
+
+
