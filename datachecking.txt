@@ -2,7 +2,8 @@
 //should have the full 15 month data with all of them having correct dates. 
 //Wide format - one line per event
 
-//stata 11 set memory: set memory 1g
+//stata 11 set memory: 
+set memory 1g
 
 use "H:\JOE\THIN\all15wide_old.dta", clear
 
@@ -39,7 +40,6 @@ codebook weight weight_cen BMI height height_centile
 //Height 110575 missing
 //height centi;e - 112381 missing
 
-preserve
 
 //for centiles need to use age at time of weighing Must install zanthro if not already done
 //need height in cm
@@ -53,7 +53,7 @@ replace height =. if height<40
 egen heightzanthro = zanthro(height,ha,UK), xvar(heightage) gender(sex) gencode(male=1, female=2)
 
 egen weightzanthro = zanthro(weight,wa,UK), xvar(weightage) gender(sex) gencode(male=1, female=2)
-//plot these - can see fatter more likely to have type 2, the few skiniier ones likely type 1
+//plot these - can see fatter more likely to have type 2, the few skinnier ones likely type 1
 twoway scatter typediab weightz
 
 twoway hist weightz, by(typediab)
@@ -64,17 +64,33 @@ gen BMI = weight/(height/100)^2
 
 egen BMIzanthro = zanthro(BMI,ba,UK), xvar(weightage) gender(sex) gencode(male=1, female=2)
 
+twoway hist BMIzanthro, by(typediab)
 
-codebook typediab
-//: 15151 type 1, 11872 type 2, 85625 missing
+sort case_control
+by case_control: sum BMI BMIzanthro
+
+//problem that type2s are fat
+preserve
+drop if typediab==2
+bysort case_control: sum BMI BMIzanthro
+restore
+//This makes little difference to the overall because so few have high BMIs... 
+
+//codebook typediab
+//: 13052 type 1, 698 type 2, 290 9 (both codes recorded)
 
 //Type of diabetes: 
 preserve
 replace typediab = 3 if typediab==. & case_con==1
-collapse typediab case_con, by(id)
+collapse typediab typebymed case_con BMIzanthro, by(id)
 tab typediab case_con, col
+tab typebymed case_con, col
+bysort typebymed: sum typediab
+bysort typediab: sum BMIzanthro
+twoway hist BMIzanthro, by(typediab) 
+
 restore
-//1202 type 1, 35 type 2, 23 DM_not stated, 740 not coded and all are cases.
+//type diab: 1202 type 1, 35 type 2, 23 DM_not stated, 740 not coded and all are cases.
 
 preserve
 replace typebymed = 3 if typediab==. & case_con==1

@@ -1,0 +1,121 @@
+//Stata file for cleaning and analysing the sense checked THIN data in H:\JOE\THIN\all15wide_old.dta
+
+//stata 11 set memory: 
+set memory 1g
+
+use "H:\JOE\THIN\all15wide_old.dta", clear
+
+//sort out z scores
+//for centiles need to use age at time of weighing Must install zanthro if not already done
+//need height in cm
+generate weightage = eventdate-dob if weight!=.
+replace weightage = weightage/365.25
+generate heightage = eventdate-dob if height!=.
+replace heightage = heightage/365.25
+replace height = height*100 if height<2
+replace height =. if height<40
+
+egen heightzanthro = zanthro(height,ha,UK), xvar(heightage) gender(sex) gencode(male=1, female=2)
+
+egen weightzanthro = zanthro(weight,wa,UK), xvar(weightage) gender(sex) gencode(male=1, female=2)
+
+//sort out BMI = weight/height in m squared
+drop BMI
+gen BMI = weight/(height/100)^2
+
+egen BMIzanthro = zanthro(BMI,ba,UK), xvar(weightage) gender(sex) gencode(male=1, female=2)
+
+
+//initially we are going to perform the analysis dropping cases with a record of 
+//t2dm or metformin etc rx without insulin
+//will also need to drop the controls as well
+
+//Therefore need to drop typediab==2 && 9
+//also typebymed==2
+
+//create new variable cluster to identify cases and controls in same matched cluster
+gen cluster = case_id if case_control==0 
+replace cluster = id if case_control==1
+egen clusternum = group(cluster)
+//clusternum is now an integer cluster marker
+
+gen marker = clusternum if typediab==2 | typediab==9 | typebymed==2
+// marker is positive if type of DM is 2 ever or metformin rx and no insulin
+// generate totalcluster to fill all empty spaces in the clusternum group
+egen totalcluster = total(marker), by(clusternum)
+//then drop those cases and controls with a non-zero totalcluster, and totalcluster
+drop if totalcluster>0
+drop totalcluster
+drop marker
+
+//now can start filling out the results table: 
+preserve
+collapse age sex dob case_control BMI BMIzanthro typediab typebymed, by(id)
+codebook case_control
+//1926 cases and 7704 controls
+sum age if case_con==1, d
+sum age if case_con==0, d
+//Just under 10 is median
+
+tab sex case_cont, col
+//53% Male both cases and controls
+
+tab typediab case_con, col
+tab typebymed case_con, col
+
+bysort case_cont: sum BMI
+bysort case_cont: sum BMIzanthro
+restore
+
+// consultations in prev 1, 3 and 12 months
+
+//sort out time to be indexed at last known consultation
+
+by id, sort: egen lasttime = max(eventdate)
+format lasttime %td
+
+gen timebeforeindex = indexdate-eventdate
+sum timebeforeindex
+//from 457 to -30
+
+//reset indexdate to be lasttime
+replace indexdate = lasttime
+
+replace timebeforeindex = indexdate-eventdate
+sum timebeforeindex
+//from 0 to 484
+
+preserve
+drop if timebeforeindex > 30
+gen marker = 1
+egen attendances1m = total(marker), by(id)
+collapse attendances1m case_cont, by (id)
+bysort case_cont: sum attendances1m, d
+restore
+
+preserve
+drop if timebeforeindex > 91
+gen marker = 1
+egen attendances3m = total(marker), by(id)
+collapse attendances3m case_cont, by (id)
+bysort case_cont: sum attendances3m, d
+restore
+
+preserve
+drop if timebeforeindex > 365
+gen marker = 1
+egen attendances12m = total(marker), by(id)
+collapse attendances12m case_cont, by (id)
+bysort case_cont: sum attendances12m, d
+restore
+
+
+
+
+
+
+
+
+
+
+
