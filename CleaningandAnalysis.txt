@@ -110,7 +110,21 @@ bysort case_cont: sum attendances12m, d
 restore
 
 
+//look at codes for: Thirst/polydipsia Polyuria Weight loss Fatigue Abdominal pain
+//in last 2 weeks
 
+preserve
+drop if timebeforeindex >14
+drop if timebeforeindex ==1
+
+egen symptgroup = group(symptom1)
+sort symptgroup
+by symptgroup: gen symptfreq = _N
+sort symptfreq symptom1
+
+tab symptom1 case_cont, col 
+
+list id if symptgroup ==diabetes
 
 
 
