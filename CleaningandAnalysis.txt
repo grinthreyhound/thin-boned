@@ -48,6 +48,7 @@ drop if totalcluster>0
 drop totalcluster
 drop marker
 ******************************************************************************
+
 //now can start filling out the results table: 
 
 //get details of population:
@@ -73,16 +74,93 @@ restore
 
 //sort out time to be indexed at last known consultation
 **********************************************************************
-by id, sort: egen lasttime = max(eventdate)
-format lasttime %td
+
+//Need to change the case indexdate to include those consultations where the doctor was clearly thinking of diabetes.
+//This is to reduce biases due to recording delay
+//look at the symptom codes:
+
+/* 
+preserve
+egen symptgroup = group(symptom1)
+sort symptgroup
+by symptgroup: gen symptfreq = _N
+sort symptfreq symptom1
+
+tab symptom1 case_cont, col 
+restore
+
+
+//and look at the tests done:
+preserve
+foreach i of numlist 1/49{
+egen testgroup`i' = group(testdone`i')
+sort testgroup`i'
+by testgroup`i': gen testfreq`i' = _N
+sort testfreq`i' testdone`i'
+
+tab testdone`i' case_cont, col
+}
+restore
+
+*/
+
+//list of codes indicative that GP knows it is diabetes: 
+
+gen marker = 0
+// look at the obvious ones and mark the consultation where they occurred:
+foreach var of varlist symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11{
+replace marker = 1 if `var'== "glycosuria"
+replace marker = 1 if `var'== "glycaemia test"
+replace marker = 1 if `var'== "hyperglycaemia"
+replace marker = 1 if `var'== "hypoglycaemia"
+replace marker = 1 if `var'== "urine glucose test"
+replace marker = 1 if `var'== "impaired glucose tole"
+replace marker = 1 if `var'== "ketonuria"
+replace marker = 1 if `var'== "thirst"
+}
+
+foreach i of numlist 1/49{
+replace marker = 1 if testdone`i' == "Fasting glucose"
+replace marker = 1 if testdone`i' == "Glucose Tolerance tes"
+replace marker = 1 if testdone`i' == "Hb A1C - Diabetic con"
+replace marker = 1 if testdone`i' == "Urinalysis - Glucose"
+replace marker = 1 if testdone`i' == "Urine dipstick for gl"
+replace marker = 1 if testdone`i' == "Urine dipstick for ke"
+replace marker = 1 if testdone`i' == "Blood glucose"
+replace marker = 1 if testdone`i' == "Blood gases"
+replace marker = 1 if testdone`i' == "Serum osmolality"
+replace marker = 1 if testdone`i' == "Urine Biochemistry"
+replace marker = 1 if testdone`i' == "Diabetes annual check"
+replace marker = 1 if testdone`i' == "Diabetes current stat"
+}
+
+//only for cases
+replace marker = 0 if case_cont==0 
+//most of the events are around the indexdate. -ve ones don't matter.
+//need to decide a cut-off: Allow 21 days as this is our timeframe shift 
+replace marker = 0 if markertime>21
+
+//get at the time that these took place at: 
+gen markertime = indexdate-eventdate if marker==1 
+sum markertime
+hist markertime, frequency
+//large majority within 2 weeks
+
+//now change indexdates to be largest value of markertime within id of cases 
+egen newcaseindex = max(markertime) if case_control ==1 , by(id)
+//now can replace indexdate with earliest possible mention of diabetes. 
+replace newcaseindex = -99 if newcaseindex==.
+replace indexdate = newcaseindex if newcaseindex>0 
+
+
+//need to now sort out the indexdates for the controls. ********************************
+//reset indexdate to be lasttime is not enough - This needs to be more sophisticated
+//need to get it so that dm not sliding into frame of ref
+//not lasttime but nearest one to indexdate for controls and indexdate for cases
 
 gen timebeforeindex = indexdate-eventdate
 sum timebeforeindex
 //from 457 to -30
-
-//reset indexdate to be lasttime is not enough - This needs to be more sophisticated
-//need to get it so that dm not sliding into frame of ref
-//not lasttime but nearest one to indexdate for controls and indexdate for cases
 
 //need to identify nearest to zero within id for controls
 //make negatives positive:
@@ -111,20 +189,12 @@ sum timebeforeindex
 
 drop if timebeforeindex <0 
 
-************************************************************************
-//Need to change the case indexdate to include those consultations where the doctor was clearly thinking of diabetes. 
 
-
-preserve
-drop if timebeforeindex<=1 
-egen symptgroup = group(symptom1)
-sort symptgroup
-by symptgroup: gen symptfreq = _N
-sort symptfreq symptom1
-
-tab symptom1 case_cont, col 
 
 list id timebeforeindex if symptom1=="diabetes"  ///there is an error in the indexing for some cases
+
+************************************************************************
+
 
 
 //look at codes for: Thirst/polydipsia Polyuria Weight loss Fatigue Abdominal pain
