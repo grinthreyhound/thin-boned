@@ -134,28 +134,36 @@ replace marker = 1 if testdone`i' == "Diabetes annual check"
 replace marker = 1 if testdone`i' == "Diabetes current stat"
 }
 
-//only for cases
-replace marker = 0 if case_cont==0 
-//most of the events are around the indexdate. -ve ones don't matter.
-//need to decide a cut-off: Allow 21 days as this is our timeframe shift 
-replace marker = 0 if markertime>21
 
-//get at the time that these took place at: 
+//need to decide a cut-off: Allow 21 days as this is our timeframe shift. get rid of -ve ones
+
+replace marker = 0 if markertime>21
+replace marker = 0 if markertime<1 
+//changes only for cases, 
+replace marker = 0 if case_cont==0 
+
+//get the time that these took place at: 
 gen markertime = indexdate-eventdate if marker==1 
-sum markertime
-hist markertime, frequency
-//large majority within 2 weeks
+
+twoway hist markertime, by(case_cont)
+//most of the events are around the indexdate. //large majority within 2 weeks
 
 //now change indexdates to be largest value of markertime within id of cases 
-egen newcaseindex = max(markertime) if case_control ==1 , by(id)
+
+//but only if marker is +ve!
+********************************May need to examine the records!
+
+egen newcaseindex = min(eventdate)  if marker==1, by(id)
+egen newcaseindexfull = min(newcaseindex), by(id)
+
 //now can replace indexdate with earliest possible mention of diabetes. 
 replace newcaseindex = -99 if newcaseindex==.
 replace indexdate = newcaseindex if newcaseindex>0 
 
 
-//need to now sort out the indexdates for the controls. ********************************
+//need to now sort out the indexdates for the controls. 
 //reset indexdate to be lasttime is not enough - This needs to be more sophisticated
-//need to get it so that dm not sliding into frame of ref
+//need to get it so that dm not sliding into frame of ref for cases
 //not lasttime but nearest one to indexdate for controls and indexdate for cases
 
 gen timebeforeindex = indexdate-eventdate
