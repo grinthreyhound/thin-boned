@@ -48,7 +48,7 @@ drop if totalcluster>0
 drop totalcluster
 drop marker
 ******************************************************************************
-
+/*
 //now can start filling out the results table: 
 
 //get details of population:
@@ -73,6 +73,7 @@ restore
 // consultations in prev 1, 3 and 12 months
 
 //sort out time to be indexed at last known consultation
+*/
 **********************************************************************
 
 //Need to change the case indexdate to include those consultations where the doctor was clearly thinking of diabetes.
@@ -117,6 +118,8 @@ replace marker = 1 if `var'== "urine glucose test"
 replace marker = 1 if `var'== "impaired glucose tole"
 replace marker = 1 if `var'== "ketonuria"
 replace marker = 1 if `var'== "thirst"
+replace marker = 1 if `var'== "diabetes"
+replace marker = 1 if regexm(`var', "diab") == 1
 }
 
 foreach i of numlist 1/49{
@@ -132,18 +135,21 @@ replace marker = 1 if testdone`i' == "Serum osmolality"
 replace marker = 1 if testdone`i' == "Urine Biochemistry"
 replace marker = 1 if testdone`i' == "Diabetes annual check"
 replace marker = 1 if testdone`i' == "Diabetes current stat"
+replace marker = 1 if regexm(testdone`i', "diab") == 1
 }
 
+
+
+//get the time that these took place at: 
+gen markertime = indexdate-eventdate if marker==1 
 
 //need to decide a cut-off: Allow 21 days as this is our timeframe shift. get rid of -ve ones
 
 replace marker = 0 if markertime>21
-replace marker = 0 if markertime<1 
+replace marker = 0 if markertime<0 
 //changes only for cases, 
 replace marker = 0 if case_cont==0 
 
-//get the time that these took place at: 
-gen markertime = indexdate-eventdate if marker==1 
 
 twoway hist markertime, by(case_cont)
 //most of the events are around the indexdate. //large majority within 2 weeks
@@ -151,14 +157,31 @@ twoway hist markertime, by(case_cont)
 //now change indexdates to be largest value of markertime within id of cases 
 
 //but only if marker is +ve!
-********************************May need to examine the records!
+********************************May need to examine the records: done. reasonable codes:
+/* unfortunately fucking Stata doesn't recognise /* outside of crappy do file format. 
+preserve
+drop if marker ==0
+keep  id markertime symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11 testdone1 testdone2 testdone3 testdone4 testdone5 testdone7 testdone8 testdone9 testdone10 testdone11 testdone12 testdone13 testdone14 testdone15 testdone17 testdone18 testdone19 testdone20 testdone21 testdone22 testdone23 testdone24 testdone25 testdone26 testdone27 testdone28 testdone29 testdone30 testdone31 testdone32 testdone33 testdone34 testdone35 testdone36 testdone37 testdone38 testdone39 testdone40 testdone41 testdone42 testdone43 testdone44 testdone45 testdone46 testdone47 testdone48 testdone49 
 
+sum markertime, by(id)
+
+restore
+
+//there were 326 records that met the non-diabetes criteria. 
+*/
+ 
+//create minimum within id, and give it to all within that ID:
 egen newcaseindex = min(eventdate)  if marker==1, by(id)
 egen newcaseindexfull = min(newcaseindex), by(id)
 
-//now can replace indexdate with earliest possible mention of diabetes. 
+///bysort case_cont : sum newcaseindexfull  //check that no controls have new indexes -  it's fine. 
+
+
+//now can replace indexdate with earliest possible mention of diabetes for cases
 replace newcaseindex = -99 if newcaseindex==.
-replace indexdate = newcaseindex if newcaseindex>0 
+replace indexdate = newcaseindex if newcaseindex>0 & case_cont==1
+
+drop newcaseindex newcaseindexfull marker markertime
 
 
 //need to now sort out the indexdates for the controls. 
@@ -175,7 +198,6 @@ sum timebeforeindex
 gen timefromindex = sqrt(timebeforeindex*timebeforeindex)
 // from 0 to 457
 
-
 //find nearest to zero within id:
 egen minfromcase = min(timefromindex), by(id)
 //from 0-21 days
@@ -186,42 +208,23 @@ gen newcontrolindex = eventdate if timefromindex==minfromcase & case_control==0
 
 egen bestindexdate = min(newcontrolindex) if case_con==0, by(id) 
 
-replace indexdate = bestindexdate if case_control ==0
-drop newcontrolindex bestindexdate minfromcase
+replace indexdate = bestindexdate if case_control ==0 & bestindexdate!=.
+drop newcontrolindex bestindexdate minfromcase timefromindex
 
 replace timebeforeindex = indexdate-eventdate
-sum timebeforeindex
+//sum timebeforeindex
 //from -43 to 478 - i.e. the 21 days either side of the original indexdate plus the indexdate
-//so for some of them the indexdate has moved to the earliest date, but thy still have records 6 weeks later
+//so for some of them the indexdate has moved to the earliest date, but they still have records 6 weeks later
 //these must be removed at this point. 
 
 drop if timebeforeindex <0 
 
 
-
 list id timebeforeindex if symptom1=="diabetes"  ///there is an error in the indexing for some cases
+//looking at the data this is in the original dataset - need to redefine all index dates for cases. 
+//now sorted out. there is one one month before but this is family hx of DM rather than diagnosis. 
 
 ************************************************************************
-
-
-
-//look at codes for: Thirst/polydipsia Polyuria Weight loss Fatigue Abdominal pain
-//in last 2 weeks
-
-preserve
-drop if timebeforeindex >14
-drop if timebeforeindex <1
-
-egen symptgroup = group(symptom1)
-sort symptgroup
-by symptgroup: gen symptfreq = _N
-sort symptfreq symptom1
-
-tab symptom1 case_cont, col 
-
-list id if symptgroup ==diabetes
-
-
 
 preserve
 drop if timebeforeindex > 30
@@ -247,6 +250,83 @@ collapse attendances12m case_cont, by (id)
 bysort case_cont: sum attendances12m, d
 restore
 
+
+//DKA codes at presentation - for this proxy of codes - emergency, ketonuria, dehydrated, dyspnoea, (unwell looking or equivalent) 
+
+//look at codes for: Thirst/polydipsia Polyuria Weight loss Fatigue Abdominal pain
+//in last 2 weeks
+
+
+gen dkaproxy = 0
+gen thirstmarker = 0
+gen polyuriamarker = 0
+gen weightmarker = 0
+gen fatiguemarker = 0
+gen abdopmarker = 0
+// mark the consultation where they occurred: 
+foreach var of varlist symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11{
+replace thirstmarker = 1 if `var'== "thirst"
+replace polyuriamarker = 1 if `var'== "frequency, urinary"
+replace weightmarker = 1 if `var'== "weight"
+replace weightmarker = 1 if `var'=="weight symptom"
+replace weightmarker = 1 if `var'== "BMI"
+replace fatiguemarker = 1 if `var'== "fatigue"
+replace fatiguemarker = 1 if `var'== "drowsiness"
+replace abdopmarker = 1 if `var'== "abdominal pain"
+
+replace dkaproxy = 1 if `var'== "condition unstable"
+replace dkaproxy = 1 if `var'== "collapse"
+replace dkaproxy = 1 if `var'== "consciousness disturb"
+replace dkaproxy = 1 if `var'== "drowsiness"
+replace dkaproxy = 1 if `var'== "dyspnoea"
+replace dkaproxy = 1 if `var'== "hyperventilation"
+replace dkaproxy = 1 if `var'== "ketonuria"
+replace dkaproxy = 1 if `var'== "looks unwell"
+}
+
+//replace dkaproxy = 1 if `var'== "emergency" - not sure about this one. Can be emergency without dka 
+
+******************************here we are! looking at presentations***************************
+preserve
+//look at DKAs in cases only
+drop if case_cont==0
+
+//Add up number of DKA like presentations each day
+egen sumdkabydate = sum(dkaproxy), by(timebeforeindex)
+
+//collapse over time to give actual number
+collapse sumdkabydate, by(timebeforeindex)
+
+//plot them
+line sum timebeforeindex
+restore
+
+
+
+//look at thirst
+//look in cases and controls separately
+preserve
+drop if case_control==0 
+//Add up number of thirst like presentations each day in cases and controls:
+egen sumthirstbydatecase = sum(thirstmarker), by(timebeforeindex)
+
+
+//collapse over time to give actual number
+collapse sumthirstbydatecase, by(timebeforeindex)
+
+//plot them
+line sumthirstbydatecase timebeforeindex
+//look at the datasheet if want to see it
+restore
+
+preserve
+
+drop if case_control==1
+egen sumthirstbydatecontrol = sum(thirstmarker), by(timebeforeindex)
+
+
+line sumthirstbydatecontrol timebeforeindex
+restore
 
 
 
