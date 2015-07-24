@@ -77,7 +77,7 @@ replace marker = 1 if testdone`i' == "Urine dipstick for ke"
 replace marker = 1 if testdone`i' == "Blood glucose"
 replace marker = 1 if testdone`i' == "Blood gases"
 replace marker = 1 if testdone`i' == "Serum osmolality"
-replace marker = 1 if testdone`i' == "Urine Biochemistry"
+*replace marker = 1 if testdone`i' == "Urine Biochemistry"
 replace marker = 1 if testdone`i' == "Diabetes annual check"
 replace marker = 1 if testdone`i' == "Diabetes current stat"
 replace marker = 1 if regexm(testdone`i', "diab") == 1
@@ -188,6 +188,10 @@ replace dkaproxy = 1 if `var'== "looks unwell"
 
 //replace dkaproxy = 1 if `var'== "emergency" - not sure about this one. Can be emergency without dka 
 
+//how many of these codes are there? 
+gen NICEcodecount = 0
+replace NICEcodecount = thirstmarker + polyuriamarker + weightmarker + fatiguemarker + abdopmarker
+
 
 /*type of consultation: factoface==day only
 gen facetoface = 0
@@ -231,7 +235,8 @@ replace nonadmin = 1 if Phone == 1
 ********************************************************
 
 //now get regressions going...
-use "H:\JOE\THIN\consults15forregress.dta", clear
+*use "H:\JOE\THIN\consults15forregress.dta", clear
+*use "H:\JOE\THIN\consults15forregresswithNICE.dta", clear
 
 //NUmerical id:
 egen numid =group(id)
@@ -240,8 +245,8 @@ egen numid =group(id)
 duplicates drop numid eventdate, force
 
 //initially all types of consultation together... (gen failtype =1) but can use this to alter the events - beware the replacement of overlapping failures...
-gen failtype=. 
-*gen failtype=1
+*gen failtype=. 
+gen failtype=1
 *replace failtype = 1 if facetoface == 1
 *replace failtype = 2 if OOH == 1
 *replace failtype = 3 if Phone == 1
@@ -252,7 +257,7 @@ gen failtype=.
 *replace failtype = 6 if dkaproxy == 1
 *replace failtype = 7 if thirstmarker ==1
 *replace failtype = 8 if polyuriamarker ==1
-replace failtype = 9 if weightmarker ==1
+*replace failtype = 9 if weightmarker ==1
 *replace failtype = 10 if fatiguemarker ==1
 *replace failtype = 11 if abdopmarker ==1
 
@@ -354,7 +359,7 @@ egen ngroup = group(mgroup)
  //failtype = 11 if abdopmarker =1
 
 
-*gen failure=1 if failtype==1
+gen failure=1 if failtype==1
 *gen failure=1 if failtype==2
 *gen failure=1 if failtype==3
 *gen failure=1 if failtype==4
@@ -362,9 +367,9 @@ egen ngroup = group(mgroup)
 *gen failure=1 if failtype==6
 *gen failure=1 if failtype==7
 *gen failure=1 if failtype==8 
-gen failure=1 if failtype==9 
+*gen failure=1 if failtype==9 
 *gen failure=1 if failtype==10
-gen failure=1 if failtype==11
+*gen failure=1 if failtype==11
 
 
 //Make failure missing values ==0
@@ -415,4 +420,8 @@ restore
 
 //sweet. 
 
-
+##things to do 
+## Get the index dates right - taking into account removing the urine biochem
+##- get the number of events in each week - by cases and controls
+##Add the NICE indicators together. (any in a consult)
+##also thinking of >2,3,4 etc
