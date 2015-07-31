@@ -74,9 +74,9 @@ replace marker = 1 if testdone`i' == "Urinalysis - Glucose"
 replace marker = 1 if testdone`i' == "Urine dipstick for gl"
 replace marker = 1 if testdone`i' == "Urine dipstick for ke"
 replace marker = 1 if testdone`i' == "Blood glucose"
-replace marker = 1 if testdone`i' == "Blood gases"
-replace marker = 1 if testdone`i' == "Serum osmolality"
-replace marker = 1 if testdone`i' == "Urine Biochemistry"
+*replace marker = 1 if testdone`i' == "Blood gases"
+*replace marker = 1 if testdone`i' == "Serum osmolality"
+*replace marker = 1 if testdone`i' == "Urine Biochemistry"
 replace marker = 1 if testdone`i' == "Diabetes annual check"
 replace marker = 1 if testdone`i' == "Diabetes current stat"
 replace marker = 1 if regexm(testdone`i', "diab") == 1
@@ -230,14 +230,15 @@ replace faceAndPhone = 1 if facetoface == 1 | Phone==1
 replace nonadmin = 1 if facetoface == 1
 replace nonadmin = 1 if OOH == 1
 replace nonadmin = 1 if Phone == 1
+gen anyconsult = 1
 
-
-
+//save "H:\JOE\THIN\consults15final.dta"
 ********************************************************
 
 //now get regressions going...
 *use "H:\JOE\THIN\consults15forregress.dta", clear
 *use "H:\JOE\THIN\consults15forregresswithNICE.dta", clear
+use "H:\JOE\THIN\consults15final.dta", clear
 
 //NUmerical id:
 egen numid =group(id)
@@ -247,11 +248,11 @@ duplicates drop numid eventdate, force
 
 //initially all types of consultation together... (gen failtype =1, BEWARE, ?need to use failtype =. as later code used this) but can use this to alter the events - beware the replacement of overlapping failures...
 gen failtype=.
-*gen failtype=1
+
 *replace failtype = 1 if facetoface == 1
 *replace failtype = 2 if OOH == 1
 *replace failtype = 3 if Phone == 1
-replace failtype = 4 if faceAndPhone == 1
+*replace failtype = 4 if faceAndPhone == 1
 *replace failtype = 5 if nonadmin == 1
 
 
@@ -262,6 +263,12 @@ replace failtype = 4 if faceAndPhone == 1
 *replace failtype = 9 if weightmarker ==1
 *replace failtype = 10 if fatiguemarker ==1
 *replace failtype = 11 if abdopmarker ==1
+
+//all consults
+*replace failtype = 12 if anyconsult==1
+
+//admin only
+replace failtype = 13 if anyconsult==1 & nonadmin!=1
 
 ..................................................
 //start with 3 month data
@@ -279,14 +286,11 @@ format enter %td
 //need panel data, i.e. entries for each id within each time period, rather then each eventdate
 //to do this need to st split on time, and need the entry exit etc to do this. 
 
-
 //need to number the events
-//if don't drop earlier consultations end up with n1 up to 185
-*drop if timebeforeindex>91
+//if don't drop earlier consultations (timebeforeindex >91 as earlier)end up with n1 up to 185
 
 sort numid eventdate
 by numid: generate n1 = _n
-
 
 
 // could drop some variables we don't need...
@@ -294,35 +298,29 @@ drop indexevent weight weight_centile height height_centile medcode1 locate1 med
 
 //reshape the data - the variables in the varlist are expanded to each different occasion (over n columns), things that are constant are kept as one column. i.e need to out those not constant in varlist
 
-//because adds numbers and already in double digits need to make n1 larger if expanding already expanded ones:
-*replace n1=n1*10
-
-
-reshape wide eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE, i(numid) j(n1)
+reshape wide eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE anyconsult, i(numid) j(n1)
 
 //add in an entrydate: make it the first one (zero) and make the fail type be 0
 generate eventdate0=indexdate-91 
 generate failtype0=0
 
-//time to reshape to long: each id then has 42 different row entries, many blank, which need deleting
-reshape long eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE, i(numid) j(J)
+//time to reshape to long: each id then has 42 different row entries, mostly blank, which need deleting
+reshape long eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE anyconsult, i(numid) j(J)
 
 //drop lines without data
 drop if eventdate==.
 format eventdate %td
 
-
-preserve
+*preserve
 
 //now need to stset the data
-
 //make sure indexevent is accurate... (indexdates have changed)
 gen indexevent =1 if indexdate==eventdate
 
 //get failtype = 99 if it's the indexdate
 replace failtype = 99 if indexevent==1
 
-stset eventdate, id(numid) fail(failtype==4) exit(failtype==99, time .) origin(enter) enter(enter) scale(1)
+stset eventdate, id(numid) fail(failtype==13) exit(failtype==99, time .) origin(enter) enter(enter) scale(1)
 stsplit earlylate, at(7(7)91) after(enter) 
 stset, clear
 //Need to turn earlylate into an ordinal thingy of weeks before index
@@ -355,12 +353,12 @@ egen ngroup = group(mgroup)
  //failtype = 9 if weightmarker =1
  //failtype = 10 if fatiguemarker =1
  //failtype = 11 if abdopmarker =1
-
+//failtype = 12 if anyconsult=1
 
 *gen failure=1 if failtype==1
 *gen failure=1 if failtype==2
 *gen failure=1 if failtype==3
-gen failure=1 if failtype==4
+*gen failure=1 if failtype==4
 *gen failure=1 if failtype==5
 *gen failure=1 if failtype==6
 *gen failure=1 if failtype==7
@@ -368,10 +366,14 @@ gen failure=1 if failtype==4
 *gen failure=1 if failtype==9 
 *gen failure=1 if failtype==10
 *gen failure=1 if failtype==11
-
+*gen failure=1 if failtype==12
+gen failure=1 if failtype==13
 
 //Make failure missing values ==0
 recode failure(.=0)
+
+//Don't count failures on the indexdate - for cases or controls
+replace failure = 0 if indexevent==1
 
 //now need to sort out multiples: caused by some presenting >1 time in stplit period (including >1 per day for some)
 //generate dup to count duplicates (of each event type, not total events in the time period!!)
@@ -401,30 +403,29 @@ drop if dup1>0 & failure==0
 
 //now we have panel data with time from event in earlylate and number of events in each time period in failure
 
-///does removing failures in last week make a differnce:   Need to not count index events! 
-replace failure = failure-1 if failtype==99 & failure>1
-
 //Inform stata is panel data, with ngroup as panelvar (the panel variable) remember we are dropping other time periods, so there shouldn't be extras within the id - that can't be the group defining variable! 
 xtset ngroup
 
 
 //for each time period:
-foreach i of num 1/5 {
+foreach i of num 1/13 {
 preserve
 display `i'
 keep if earlylate==`i'
-xtpoisson failure case_control, irr iter(30)
-drop if failure==0 
-tab failure
+xtpoisson failure case_control, irr iter(30) 
+drop if failure ==0
+tab failure case_cont, col
 restore
 }
 
 gen duration = indexdate - enter
 tab duration 
+
+tab earlylate case_control 
 //sweet. 
 
 ##things to do 
-## Get the index dates right - taking into account removing the urine biochem
+## Get the index dates right - taking into account removing the urine biochem etc 
 ##- get the number of events in each week - by cases and controls
 ##Add the NICE indicators together. (any in a consult)
 ##also thinking of >2,3,4 etc
