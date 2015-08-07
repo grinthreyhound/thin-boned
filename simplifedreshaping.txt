@@ -268,7 +268,11 @@ gen failtype=.
 *replace failtype = 12 if anyconsult==1
 
 //admin only
-replace failtype = 13 if anyconsult==1 & nonadmin!=1
+*replace failtype = 13 if anyconsult==1 & nonadmin!=1
+
+//anyNICE - MAKE THIS WORK!
+replace failtype = NICEcodecount 
+
 
 ..................................................
 //start with 3 month data
@@ -320,7 +324,7 @@ gen indexevent =1 if indexdate==eventdate
 //get failtype = 99 if it's the indexdate
 replace failtype = 99 if indexevent==1
 
-stset eventdate, id(numid) fail(failtype==13) exit(failtype==99, time .) origin(enter) enter(enter) scale(1)
+stset eventdate, id(numid) fail(failtype==14) exit(failtype==99, time .) origin(enter) enter(enter) scale(1)
 stsplit earlylate, at(7(7)91) after(enter) 
 stset, clear
 //Need to turn earlylate into an ordinal thingy of weeks before index
@@ -367,7 +371,8 @@ egen ngroup = group(mgroup)
 *gen failure=1 if failtype==10
 *gen failure=1 if failtype==11
 *gen failure=1 if failtype==12
-gen failure=1 if failtype==13
+*gen failure=1 if failtype==13
+gen failure=1 if failtype==14
 
 //Make failure missing values ==0
 recode failure(.=0)
@@ -425,7 +430,5 @@ tab earlylate case_control
 //sweet. 
 
 ##things to do 
-## Get the index dates right - taking into account removing the urine biochem etc 
-##- get the number of events in each week - by cases and controls
-##Add the NICE indicators together. (any in a consult)
+##Add the NICE indicators together. (any in a consult)!!!
 ##also thinking of >2,3,4 etc
