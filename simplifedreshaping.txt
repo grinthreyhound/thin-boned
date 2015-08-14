@@ -262,7 +262,7 @@ duplicates drop numid eventdate, force
 //initially all types of consultation together... (gen failtype =1, BEWARE, ?need to use failtype =. as later code used this) but can use this to alter the events - beware the replacement of overlapping failures...
 gen failtype=.
 
-replace failtype = 1 if facetoface == 1
+*replace failtype = 1 if facetoface == 1
 *replace failtype = 2 if OOH == 1
 *replace failtype = 3 if Phone == 1
 *replace failtype = 4 if faceAndPhone == 1
@@ -284,7 +284,7 @@ replace failtype = 1 if facetoface == 1
 *replace failtype = 13 if anyconsult==1 & nonadmin!=1
 
 //anyNICE - One or more in a consultation 
-*replace failtype = 14 if NICEcodecount>0 
+replace failtype = 14 if NICEcodecount>0 
 
 
 ..................................................
@@ -328,8 +328,6 @@ reshape long eventdate weightage heightage BMI failtype heightzanthro weightzant
 drop if eventdate==.
 format eventdate %td
 
-*preserve
-
 //now need to stset the data
 //make sure indexevent is accurate... (indexdates have changed)
 gen indexevent =1 if indexdate==eventdate
@@ -337,7 +335,9 @@ gen indexevent =1 if indexdate==eventdate
 //get failtype = 99 if it's the indexdate
 replace failtype = 99 if indexevent==1
 
-stset eventdate, id(numid) fail(failtype==1) exit(failtype==99, time .) origin(enter) enter(enter) scale(1)
+//need to replace failtype==X below to match analysis
+
+stset eventdate, id(numid) fail(failtype==14) exit(failtype==99, time .) origin(enter) enter(enter) scale(1)
 stsplit earlylate, at(7(7)91) after(enter) 
 stset, clear
 //Need to turn earlylate into an ordinal thingy of weeks before index
@@ -374,7 +374,7 @@ egen ngroup = group(mgroup)
 //13 = Admin only
 //14 = one or more codes for NICE concerns in that consultation
 
-gen failure=1 if failtype==1
+*gen failure=1 if failtype==1
 *gen failure=1 if failtype==2
 *gen failure=1 if failtype==3
 *gen failure=1 if failtype==4
@@ -387,7 +387,7 @@ gen failure=1 if failtype==1
 *gen failure=1 if failtype==11
 *gen failure=1 if failtype==12
 *gen failure=1 if failtype==13
-*gen failure =1 if failtype==14 
+gen failure =1 if failtype==14 
 
 //Make failure missing values ==0
 recode failure(.=0)
@@ -440,14 +440,17 @@ tab failure case_cont, col
 restore
 }
 
+xtpoisson failure case_control early, irr iter(30)
 gen duration = indexdate - enter
 tab duration 
 
 tab earlylate case_control 
 //sweet. 
 
+
+
 ##things to do 
-##Sensitivity analyses - 1 : Strictest t1DM only
+##Sensitivity analyses - 1. done
 ## 2: Cases as own controls 
 ##What makes up admin consults - no prescriptions etc
 ## Comorbid conditions
