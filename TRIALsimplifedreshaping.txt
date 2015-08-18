@@ -461,16 +461,16 @@ xtset ngroup
 
 
 *for each time period:
-foreach i of num 6/13 {
+foreach i of num 7/13 {
 preserve
 display "outcome Z`i' week -`i'"
 keep if earlylate==`i'
-xtpoisson failure case_control, irr iter(30) 
+*xtpoisson failure case_control, irr iter(30) 
 drop if failure ==0
 tab failure case_cont, col
 restore
 }
-
+*}
 *display "Outcome Z`z'"
 *xtpoisson failure case_control early, irr iter(30)
 
