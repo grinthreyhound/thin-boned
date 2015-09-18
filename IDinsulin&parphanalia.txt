@@ -1,0 +1,46 @@
+***code to identify insulin/paraphanalia in the drugs section:
+
+gen insulinmarker = 0
+
+foreach i of numlist 1/16{ 
+replace insulinmarker = 1 if drug`i'=="STERILE DT TYPE C lancet"
+replace insulinmarker = 1 if drug`i'=="Blood glucose test strip T5b"
+replace insulinmarker = 1 if drug`i'=="NEEDLE STER SINGLE USE 0.4mm"
+replace insulinmarker = 1 if drug`i'=="INSULIN"
+replace insulinmarker = 1 if drug`i'=="Blood glucose test strip T5a"
+replace insulinmarker = 1 if drug`i'=="Generic Medisense G2 biosensor strips"
+replace insulinmarker = 1 if drug`i'=="Blood glucose test strip T6b"
+replace insulinmarker = 1 if drug`i'=="Sharps Bin container 1 litre"
+replace insulinmarker = 1 if drug`i'=="GLUCOSE 40% oral gel"
+replace insulinmarker = 1 if drug`i'=="GLUCAGON inj 1mg"
+replace insulinmarker = 1 if drug`i'=="Needle Clipping device"
+replace insulinmarker = 1 if drug`i'=="Ketonuria test strip"
+replace insulinmarker = 1 if drug`i'=="Blood glucose test strip T6a"
+replace insulinmarker = 1 if drug`i'=="Generic Novopen 3 CLASSIC insulin pen 3ml/2-70 units"
+replace insulinmarker = 1 if drug`i'=="INSULIN LISPRO 100iu/mL pen"
+replace insulinmarker = 1 if drug`i'=="GLUCAGON 1mg(1iu) inj pdr+dil"
+replace insulinmarker = 1 if drug`i'=="Generic OneTouch colorimetric strips"
+replace insulinmarker = 1 if drug`i'=="Biphas aspart 30/70 pen 3mL"
+replace insulinmarker = 1 if drug`i'=="INSULIN DETEMIR 100iu/mL pen"
+replace insulinmarker = 1 if drug`i'=="U100 insulin syringe 0.5ml"
+replace insulinmarker = 1 if drug`i'=="Biphasic aspart 30/70 cart 3m"
+replace insulinmarker = 1 if drug`i'=="ISOPHANE INSULIN 100iu/mL 10m"
+replace insulinmarker = 1 if drug`i'=="INSULIN ISOPHANE HUMAN PRB inj 100 iu/ml"
+replace insulinmarker = 1 if drug`i'=="Generic Autopen 24 insulin pen 3ml/1-21 units"
+replace insulinmarker = 1 if drug`i'=="Generic Autopen Junior insulin pen 3ml/1-21 units"
+replace insulinmarker = 1 if drug`i'=="Generic Novopen 3 fun - red insulin pen 3ml/2-70 units"
+replace insulinmarker = 1 if drug`i'=="INSULIN GLARGINE inj 100 iu/ml"
+replace insulinmarker = 1 if drug`i'=="Generic Medisense Optium Beta-Ketone test strips"
+replace insulinmarker = 1 if drug`i'=="Generic Novopen 3 demi insulin pen 3ml/1-35 units"
+replace insulinmarker = 1 if drug`i'=="Generic Diastix strips"
+replace insulinmarker = 1 if drug`i'=="U100 single use ins syr+8mm ndle30G 0.5ml"
+replace insulinmarker = 1 if drug`i'=="Generic Ascensia Glucodisc biosensor discs"
+}
+
+collapse insulinmarker case_control, by(id)
+
+tab ins case
+
+gen scripttime = indexdate - eventdate if insulinmarker==1 
+sum scripttime
+
