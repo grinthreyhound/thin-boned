@@ -10,35 +10,10 @@ egen numid =group(id)
 *there are 17/16 with>1 consult per day, drop these
 duplicates drop numid eventdate, force
 
-*initially all types of consultation together... (gen failtype =1, BEWARE, ?need to use failtype =. as later code used this) but can use this to alter the events - beware the replacement of overlapping failures...
 gen failtype=.
 
-*replace failtype = 1 if facetoface == 1
-*replace failtype = 2 if OOH == 1
-*replace failtype = 3 if Phone == 1
-*replace failtype = 4 if faceAndPhone == 1
-*replace failtype = 5 if nonadmin == 1
-
-
-*codes...
-*replace failtype = 6 if dkaproxy == 1
-*replace failtype = 7 if thirstmarker ==1
-*replace failtype = 8 if polyuriamarker ==1
-*replace failtype = 9 if weightmarker ==1
-*replace failtype = 10 if fatiguemarker ==1
-*replace failtype = 11 if abdopmarker ==1
-
-*all consults
-*replace failtype = 12 if anyconsult==1
-
-*admin only
-*replace failtype = 13 if anyconsult==1 & nonadmin!=1
-
-*anyNICE - One or more in a consultation 
-replace failtype = 14 if NICEcodecount>0 
-
-
 ..................................................
+
 *start with 3 month data
 drop if timebeforeindex>91
 
@@ -46,8 +21,6 @@ drop if timebeforeindex>91
 gen enter = indexdate-91
 format enter %td
 
-*Drop events that occured on the index date: or do this later
-*drop if eventdate==indexdate
 
 *need to convert snapshot data to survival time data: reshape to wide then can add events (for entry exit etc) and then reshape back to long... 
 
@@ -165,7 +138,9 @@ replace failtype = 14 if NICEcodecount>0  & `z'==14
 *gen failure=1 if failtype==11
 *gen failure=1 if failtype==12
 *gen failure=1 if failtype==13
-gen failure =1 if failtype==14 
+*gen failure =1 if failtype==14 
+
+gen failure =1 if failtype==`z'
 
 *Make failure missing values ==0
 recode failure(.=0)
@@ -209,14 +184,15 @@ xtset ngroup
 foreach i of num 1/13 {
 preserve
 display "outcome Z`z' week -`i'"
+keep if earlylate==`i'
 eststo: xtpoisson failure case_control, irr iter(30)
 drop if failure ==0
 tab failure case_cont, col
 restore
 }
 
-******************estout here NEEDS CHECKING AND CHANGING
-estout using H:\JOE\THIN\outputs\Insulinoutcomes`z'self_control_S3.tsv,  eform drop(_cons) cells( b ci_l(fmt(2)) ci_u(fmt(2)) p(fmt(3))) legend replace 
+******************
+estout using H:\JOE\THIN\outputs\Insulinoutcomes`z'primary.tsv,  eform drop(_cons) cells( b ci_l(fmt(2)) ci_u(fmt(2)) p(fmt(3))) legend replace 
 eststo clear
 *display "Outcome Z`z'"
 *xtpoisson failure case_control early age, irr iter(30)
@@ -224,7 +200,7 @@ eststo clear
 ***need to reset some things...if looping over z 
 replace failtype=.
 xtset, clear
-drop dup events dup1 failure ngroup mgroup earlylate enter indexevent J wewereone age
+drop failure dup dup1 events 
 }
 
 
