@@ -81,7 +81,7 @@ egen ngroup = group(mgroup)
 *********Automation of outputs
 *Set up so that z determines the outcome measure and i the week
 
-foreach z of num 5 12 13{
+foreach z of numlist 1/14{
 replace failtype = 1 if facetoface == 1 & `z'==1
 replace failtype = 2 if OOH == 1 & `z'==2
 replace failtype = 3 if Phone == 1 & `z'==3
@@ -180,16 +180,29 @@ drop if dup1>0 & failure==0
 xtset ngroup
 
 
-*for each time period:
-foreach i of num 1/13 {
+*for each time period: i (outcome z)
+
+local c=0
+local heading = ""
+local filemethod = "replace"
+foreach i of num 1/13{
 preserve
+gen week=-`i' if failure==1 
 display "outcome Z`z' week -`i'"
 keep if earlylate==`i'
 eststo: xtpoisson failure case_control, irr iter(30)
 drop if failure ==0
 tab failure case_cont, col
+if `c' >0{
+	local filemethod = "append"
+	local heading = "h1(nil) h2(nil) h3(nil)"
+	}
+	tabout week case_control using H:\JOE\THIN\outputs\eventstableoutcome`z'.txt , cells(freq) ptotal(none) `heading' `filemethod' 
+local c=`c'+1 
 restore
 }
+
+***********need to calculate p for chi2 between models****** chi2tail?
 
 ******************
 estout using H:\JOE\THIN\outputs\Insulinoutcomes`z'primary.tsv,  eform drop(_cons) cells( b ci_l(fmt(2)) ci_u(fmt(2)) p(fmt(3))) legend replace 
@@ -203,6 +216,7 @@ xtset, clear
 drop failure dup dup1 events 
 }
 
+done
 
 xtpoisson failure case_control early, irr iter(30)
 gen duration = indexdate - enter
