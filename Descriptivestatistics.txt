@@ -1,0 +1,27 @@
+****Descriptive statistics*****
+
+set mem 1g
+
+use "H:\JOE\THIN\consults15final2.dta", clear
+
+
+/get details of population:
+preserve
+collapse age sex dob case_control BMI BMIzanthro typediab typebymed, by(id)
+codebook case_control
+//1926 cases and 7704 controls
+sum age if case_con==1, d
+sum age if case_con==0, d
+//Just under 10 is median
+
+tab sex case_cont, col
+//53% Male both cases and controls
+
+tab typediab case_con, col
+tab typebymed case_con, col
+
+bysort case_cont: sum BMI
+bysort case_cont: sum BMIzanthro
+restore
+
+

@@ -1,0 +1,226 @@
+********************Primary analyses****************************
+
+set mem 1g
+
+use "H:\JOE\THIN\consults15final2.dta", clear
+
+*NUmerical id:
+egen numid =group(id)
+
+*there are 17/16 with>1 consult per day, drop these
+duplicates drop numid eventdate, force
+
+gen failtype=.
+
+..................................................
+
+*start with 3 month data
+drop if timebeforeindex>91
+
+*create a new entry date
+gen enter = indexdate-91
+format enter %td
+
+
+*need to convert snapshot data to survival time data: reshape to wide then can add events (for entry exit etc) and then reshape back to long... 
+
+*need panel data, i.e. entries for each id within each time period, rather then each eventdate
+*to do this need to st split on time, and need the entry exit etc to do this. 
+
+*need to number the events
+*if don't drop earlier consultations (timebeforeindex >91 as earlier)end up with n1 up to 185
+
+sort numid eventdate
+by numid: generate n1 = _n
+
+
+* could drop some variables we don't need...
+drop indexevent weight weight_centile height height_centile medcode1 locate1 medcode2 locate2 medcode3 locate3 medcode4 locate4 medcode5 locate5 medcode6 locate6 medcode7 locate7 medcode8 locate8 medcode9 locate9 medcode10 locate10 medcode11 locate11 drug1 drug2 drug3 drug4 drug5 drug6 drug7 drug8 drug16 drug15 drug14 drug13 drug12 drug11 drug10 drug9 testdone1 testdone2 testdone3 testdone4 testdone5 testdone6 testdone7 testdone8 testdone9 testdone10 testdone11 testdone12 testdone13 testdone14 testdone15 testdone16 testdone17 testdone18 testdone19 testdone20 testdone21 testdone22 testdone23 testdone24 testdone25 testdone26 testdone27 testdone28 testdone29 testdone30 testdone31 testdone32 testdone33 testdone34 testdone35 testdone36 testdone37 testdone38 testdone39 testdone40 testdone41 testdone42 testdone43 testdone44 testdone45 testdone46 testdone47 testdone48 testdone49 symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11
+
+*reshape the data - the variables in the varlist are expanded to each different occasion (over n columns), things that are constant are kept as one column. i.e need to out those not constant in varlist
+
+reshape wide eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE anyconsult, i(numid) j(n1)
+
+*add in an entrydate: make it the first one (zero) and make the fail type be 0
+generate eventdate0=indexdate-91 
+generate failtype0=0
+
+*time to reshape to long: each id then has 42 different row entries, mostly blank, which need deleting
+reshape long eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE anyconsult, i(numid) j(J)
+
+*drop lines without data
+drop if eventdate==.
+format eventdate %td
+
+*now need to stset the data
+*make sure indexevent is accurate... (indexdates have changed)
+gen indexevent =1 if indexdate==eventdate
+
+*get failtype = 99 if it's the indexdate
+replace failtype = 99 if indexevent==1
+
+*need to replace failtype==X below to match analysis
+
+stset eventdate, id(numid) fail(failtype==14) exit(failtype==99, time .) origin(enter) enter(enter) scale(1)
+stsplit earlylate, at(7(7)91) after(enter) 
+stset, clear
+*Need to turn earlylate into an ordinal thingy of weeks before index
+recode earlylate (0=13) (7=12) (14=11) (21=10) (28=9) (35=8) (42=7) (49=6) (56=5) (63=4) (70=3) (77=2) (84=1) 
+
+*need a matching variable - for matched case/control groups: strings not allowed, so number them: (can't do this before stsetting as doesn't expand cluster identifier)
+*the old ID is a good one now
+generate mgroup = id 
+replace mgroup = case_id if case_control==0 
+
+egen ngroup = group(mgroup)
+
+*to use Xt poisson need to xtset the data: delare it to be panel data: xtset panelvar timevar
+*xtsetting is a new command, *Panel data assumes there have been observations I think, so STset/stsplit first
+*cant use string id so need to group this  NB: if want to keep labels could instead use : encode id,gen(numid) 
+
+*********Automation of outputs
+*Set up so that z determines the outcome measure and i the week
+
+foreach z of numlist 13{
+replace failtype = 1 if facetoface == 1 & `z'==1
+replace failtype = 2 if OOH == 1 & `z'==2
+replace failtype = 3 if Phone == 1 & `z'==3
+replace failtype = 4 if faceAndPhone == 1 & `z'==4
+replace failtype = 5 if nonadmin == 1 & `z'==5
+
+
+*codes...
+replace failtype = 6 if dkaproxy == 1 & `z'==6
+replace failtype = 7 if thirstmarker ==1 & `z'==7
+replace failtype = 8 if polyuriamarker ==1 & `z'==8
+replace failtype = 9 if weightmarker ==1 & `z'==9
+replace failtype = 10 if fatiguemarker ==1 & `z'==10
+replace failtype = 11 if abdopmarker ==1 & `z'==11
+
+*all consults
+replace failtype = 12 if anyconsult==1 & `z'==12
+
+*admin only
+replace failtype = 13 if anyconsult==1 & nonadmin!=1 & `z'==13
+
+*anyNICE - One or more in a consultation  
+replace failtype = 14 if NICEcodecount>0  & `z'==14
+
+
+
+*failtype = 1 if facetoface
+ *failtype = 2 if OOH = 1
+ *failtype = 3 if Phone = 1
+ *failtype = 4 if faceAndPhone = 1
+ *failtype = 5 if nonadmin = 1
+
+*codes...
+ *failtype = 6 if dkaproxy = 1
+ *failtype = 7 if thirstmarker =1
+ *failtype = 8 if polyuriamarker =1
+ *failtype = 9 if weightmarker =1
+ *failtype = 10 if fatiguemarker =1
+ *failtype = 11 if abdopmarker =1
+*failtype = 12 if anyconsult=1
+*13 = Admin only
+*14 = one or more codes for NICE concerns in that consultation
+
+*gen failure=1 if failtype==1
+*gen failure=1 if failtype==2
+*gen failure=1 if failtype==3
+*gen failure=1 if failtype==4
+*gen failure=1 if failtype==5
+*gen failure=1 if failtype==6
+*gen failure=1 if failtype==7
+*gen failure=1 if failtype==8 
+*gen failure=1 if failtype==9 
+*gen failure=1 if failtype==10
+*gen failure=1 if failtype==11
+*gen failure=1 if failtype==12
+*gen failure=1 if failtype==13
+*gen failure =1 if failtype==14 
+
+gen failure =1 if failtype==`z'
+
+*Make failure missing values ==0
+recode failure(.=0)
+
+*Don't count failures on the indexdate - for cases or controls
+replace failure = 0 if indexevent==1
+
+*now need to sort out multiples: caused by some presenting >1 time in stplit period (including >1 per day for some)
+*generate dup to count duplicates (of each event type, not total events in the time period!!)
+*make sure that this is not getting rid
+sort numid earlylate failure
+quietly by numid earlylate failure: gen dup = cond(_N==1,0,_n) 
+*get the number of events in each duplicated time period (but not if failure!=1)
+by numid earlylate failure: egen events = max(dup) if failure==1
+*drop duplicates in rows
+drop if dup>1 
+drop if earlylate==.
+
+*now redefine the failures to be the number of events: failure is now the number of events in the time period
+replace failure = events if events>failure
+recode failure (.=0)
+
+*now drop the duplicates of id eventdate where failure =0 
+sort numid earlylate
+quietly by numid earlylate:gen dup1 = cond(_N==1,0,_n)
+
+drop if dup1>0 & failure==0
+*check no duplicates and sensecheck earlylate
+*duplicates report id earlylate
+*tab earlylate
+*tab failure
+*tab earlylate failure
+
+*now we have panel data with time from event in earlylate and number of events in each time period in failure
+
+*Inform stata is panel data, with ngroup as panelvar (the panel variable) remember we are dropping other time periods, so there shouldn't be extras within the id - that can't be the group defining variable! 
+xtset ngroup
+
+
+*for each time period: i (outcome z)
+
+local c=0
+local heading = ""
+local filemethod = "replace"
+foreach i of num 1/13{
+preserve
+gen week`i'= failure
+display "outcome Z`z' week -`i'"
+keep if earlylate==`i'
+*eststo: xtpoisson failure case_control, irr iter(30)
+drop if failure ==0
+tab failure case_cont, col
+if `c' >0{
+	local filemethod = "append"
+	local heading = "h1(nil) h2(nil) h3(nil)"
+	}
+	tabout week`i' case_control using H:\JOE\THIN\outputs\eventstableoutcome`z'.txt , nlab(events in week-`i) `heading' `filemethod' 
+local c=`c'+1 
+restore
+}
+
+***********
+
+******************
+estout using H:\JOE\THIN\outputs\Insulinoutcomes`z'primary.tsv,  eform drop(_cons) cells( b ci_l(fmt(2)) ci_u(fmt(2)) p(fmt(3))) legend replace 
+eststo clear
+*display "Outcome Z`z'"
+*xtpoisson failure case_control early age, irr iter(30)
+
+***need to reset some things...if looping over z 
+replace failtype=.
+xtset, clear
+drop failure dup dup1 events 
+}
+
+done
+
+xtpoisson failure case_control early, irr iter(30)
+gen duration = indexdate - enter
+tab duration 
+
+tab earlylate case_control 
+*sweet. 
