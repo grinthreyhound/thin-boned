@@ -138,9 +138,9 @@ replace failtype = 14 if NICEcodecount>0  & `z'==14
 *gen failure=1 if failtype==11
 *gen failure=1 if failtype==12
 *gen failure=1 if failtype==13
-*gen failure =1 if failtype==14 
+*gen failure=1 if failtype==14 
 
-gen failure =1 if failtype==`z'
+gen failure=1 if failtype==`z'
 
 *Make failure missing values ==0
 recode failure(.=0)
@@ -155,6 +155,9 @@ sort numid earlylate failure
 quietly by numid earlylate failure: gen dup = cond(_N==1,0,_n) 
 *get the number of events in each duplicated time period (but not if failure!=1)
 by numid earlylate failure: egen events = max(dup) if failure==1
+***************************************************
+replace events = 1 if failure==1 & dup==0
+*****************************************************
 *drop duplicates in rows
 drop if dup>1 
 drop if earlylate==.
@@ -185,13 +188,13 @@ xtset ngroup
 local c=0
 local heading = ""
 local filemethod = "replace"
-foreach i of num 1/13{
+foreach i of num 1/2{
 preserve
 gen week`i'= failure
 display "outcome Z`z' week -`i'"
 keep if earlylate==`i'
 *eststo: xtpoisson failure case_control, irr iter(30)
-drop if failure ==0
+*drop if failure ==0
 tab failure case_cont, col
 if `c' >0{
 	local filemethod = "append"

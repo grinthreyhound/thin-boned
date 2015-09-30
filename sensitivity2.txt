@@ -18,13 +18,11 @@ use "H:\JOE\THIN\consults15final2.dta", clear
 *drop totalcluster
 *drop marker
 ********************************************************************************
-preserve
-collapse age case_control sex BMI, by (id)
-bysort case_control: tab sex
-bysort case_control: sum age, det
-restore
-
-
+**checking mean ages: 
+*preserve
+*collapse age case_control, by (id)
+*sum age
+*restore
 
 * could drop some variables we don't need...
 drop indexevent weight weight_centile height height_centile medcode1 locate1 medcode2 locate2 medcode3 locate3 medcode4 locate4 medcode5 locate5 medcode6 locate6 medcode7 locate7 medcode8 locate8 medcode9 locate9 medcode10 locate10 medcode11 locate11 drug1 drug2 drug3 drug4 drug5 drug6 drug7 drug8 drug16 drug15 drug14 drug13 drug12 drug11 drug10 drug9 testdone1 testdone2 testdone3 testdone4 testdone5 testdone6 testdone7 testdone8 testdone9 testdone10 testdone11 testdone12 testdone13 testdone14 testdone15 testdone16 testdone17 testdone18 testdone19 testdone20 testdone21 testdone22 testdone23 testdone24 testdone25 testdone26 testdone27 testdone28 testdone29 testdone30 testdone31 testdone32 testdone33 testdone34 testdone35 testdone36 testdone37 testdone38 testdone39 testdone40 testdone41 testdone42 testdone43 testdone44 testdone45 testdone46 testdone47 testdone48 testdone49 symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11 age
@@ -330,7 +328,7 @@ restore
 ***********
 
 ******************
-estout using H:\JOE\THIN\outputs\Insulinoutcome`z'primary.tsv,  eform drop(_cons) cells( b ci_l(fmt(2)) ci_u(fmt(2)) p(fmt(3))) legend replace 
+estout using H:\JOE\THIN\outputs\Insulinoutcome`z'sensitivity1.tsv,  eform drop(_cons) cells( b ci_l(fmt(2)) ci_u(fmt(2)) p(fmt(3))) legend replace 
 eststo clear
 *display "Outcome Z`z'"
 *xtpoisson failure case_control early age, irr iter(30)

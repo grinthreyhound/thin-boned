@@ -18,11 +18,11 @@ use "H:\JOE\THIN\consults15final2.dta", clear
 *drop totalcluster
 *drop marker
 ********************************************************************************
-preserve
-collapse age case_control sex BMI, by (id)
-bysort case_control: tab sex
-bysort case_control: sum age, det
-restore
+*preserve
+*collapse age case_control sex BMI, by (id)
+*bysort case_control: tab sex
+*bysort case_control: sum age, det
+*restore
 
 
 
@@ -104,13 +104,12 @@ gen failtype=.
 
 *****Set up so that z determines the outcome measure and i the week 
 
-foreach z of num 1/14{
+foreach z of num 12{
 replace failtype = 1 if facetoface == 1 & `z'==1
 replace failtype = 2 if OOH == 1 & `z'==2
 replace failtype = 3 if Phone == 1 & `z'==3
 replace failtype = 4 if faceAndPhone == 1 & `z'==4
 replace failtype = 5 if nonadmin == 1 & `z'==5
-
 
 *codes...
 replace failtype = 6 if dkaproxy == 1 & `z'==6

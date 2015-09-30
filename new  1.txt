@@ -1,0 +1,18 @@
+##Finding unique values in vectors/overlap between them:
+
+
+A = csvread(mocksearchA)
+B = csvread(mocksearchB)
+C = csvread(mocksearchC)
+D = 30000
+
+ABC=length(intersection(intersection(A,B),C))
+AB=length(intersection(A,B))
+AC=length(intersection(A,C))
+BC=length(intersection(B,C))
+onlyA = A - AB - AC + ABC
+onlyB = B - AB - BC + ABC
+onlyC = C - AC - BC + ABC
+onlyAB = AB - ABC
+onlyAC = AC - ABC
+onlyBC = BC - ABC

@@ -338,7 +338,7 @@ gen failtype=.
 
 *****Set up so that z determines the outcome measure and i the week 
 
-foreach z of num 5 12 13{
+foreach z of num 13{
 replace failtype = 1 if facetoface == 1 & `z'==1
 replace failtype = 2 if OOH == 1 & `z'==2
 replace failtype = 3 if Phone == 1 & `z'==3

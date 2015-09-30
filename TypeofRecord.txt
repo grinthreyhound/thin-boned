@@ -48,7 +48,6 @@ drop if totalcluster>0
 drop totalcluster
 drop marker
 
-
 //Need to change the case indexdate to include those consultations where the doctor was clearly thinking of diabetes.
 //This is to reduce biases due to recording delay
 
@@ -84,7 +83,7 @@ replace marker = 1 if regexm(testdone`i', "diab") == 1
 }
 
 
-//get the time that these took place at: 
+//get the time that these took place at: in order to only keep those in timeframe
 gen markertime = indexdate-eventdate if marker==1 
 
 //need to decide a cut-off: Allow 21 days as this is our timeframe shift. get rid of -ve ones
@@ -147,6 +146,7 @@ drop newcontrolindex bestindexdate minfromcase timefromindex
 replace timebeforeindex = indexdate-eventdate
 //sum timebeforeindex
 //from -43 to 478 - i.e. the 21 days either side of the original indexdate plus the indexdate
+//-52 to 478
 //so for some of them the indexdate has moved to the earliest date, but they still have records 6 weeks later
 //these must be removed at this point. 
 
@@ -188,10 +188,11 @@ replace dkaproxy = 1 if `var'== "looks unwell"
 
 //replace dkaproxy = 1 if `var'== "emergency" - not sure about this one. Can be emergency without dka 
 
-//how many of these codes are there? 
+//how many of these codes are there? ///NEED to deal with reshaping too if introducing new variables. 
 gen NICEcodecount = 0
 replace NICEcodecount = thirstmarker + polyuriamarker + weightmarker + fatiguemarker + abdopmarker
 
+gen anyNICE = 1 if NICEcodecount>1 
 
 /*type of consultation: factoface==day only
 gen facetoface = 0
@@ -250,8 +251,9 @@ gen failtype=.
 *replace failtype = 1 if facetoface == 1
 *replace failtype = 2 if OOH == 1
 *replace failtype = 3 if Phone == 1
-*replace failtype = 4 if faceAndPhone == 1
+replace failtype = 4 if faceAndPhone == 1
 *replace failtype = 5 if nonadmin == 1
+
 
 //codes...
 *replace failtype = 6 if dkaproxy == 1
@@ -263,22 +265,18 @@ gen failtype=.
 
 ..................................................
 //start with 3 month data
-drop if timebeforeindex>91
+*drop if timebeforeindex>91
 
 //create a new entry date
 gen enter = indexdate-91
 format enter %td
 
-//Drop events that occured on the index date:
-drop if eventdate==indexdate
-
-//create lasttime
-by numid, sort: egen lasttime = max(eventdate)
-format lasttime %td
+//Drop events that occured on the index date: or later
+*drop if eventdate==indexdate
 
 //need to convert snapshot data to survival time data: reshape to wide then can add events (for entry exit etc) and then reshape back to long... 
 
-//need panel data, i.e entries for each id within each time period, rather then each eventdate
+//need panel data, i.e. entries for each id within each time period, rather then each eventdate
 //to do this need to st split on time, and need the entry exit etc to do this. 
 
 
@@ -286,7 +284,7 @@ format lasttime %td
 sort numid eventdate
 by numid: generate n1 = _n
 // could drop some variables we don't need...
-*drop indexevent weight weight_centile height height_centile medcode1 locate1 medcode2 locate2 medcode3 locate3 medcode4 locate4 medcode5 locate5 medcode6 locate6 medcode7 locate7 medcode8 locate8 medcode9 locate9 medcode10 locate10 medcode11 locate11 drug1 drug2 drug3 drug4 drug5 drug6 drug7 drug8 drug16 drug15 drug14 drug13 drug12 drug11 drug10 drug9 testdone1 testdone2 testdone3 testdone4 testdone5 testdone6 testdone7 testdone8 testdone9 testdone10 testdone11 testdone12 testdone13 testdone14 testdone15 testdone16 testdone17 testdone18 testdone19 testdone20 testdone21 testdone22 testdone23 testdone24 testdone25 testdone26 testdone27 testdone28 testdone29 testdone30 testdone31 testdone32 testdone33 testdone34 testdone35 testdone36 testdone37 testdone38 testdone39 testdone40 testdone41 testdone42 testdone43 testdone44 testdone45 testdone46 testdone47 testdone48 testdone49 symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11
+drop indexevent weight weight_centile height height_centile medcode1 locate1 medcode2 locate2 medcode3 locate3 medcode4 locate4 medcode5 locate5 medcode6 locate6 medcode7 locate7 medcode8 locate8 medcode9 locate9 medcode10 locate10 medcode11 locate11 drug1 drug2 drug3 drug4 drug5 drug6 drug7 drug8 drug16 drug15 drug14 drug13 drug12 drug11 drug10 drug9 testdone1 testdone2 testdone3 testdone4 testdone5 testdone6 testdone7 testdone8 testdone9 testdone10 testdone11 testdone12 testdone13 testdone14 testdone15 testdone16 testdone17 testdone18 testdone19 testdone20 testdone21 testdone22 testdone23 testdone24 testdone25 testdone26 testdone27 testdone28 testdone29 testdone30 testdone31 testdone32 testdone33 testdone34 testdone35 testdone36 testdone37 testdone38 testdone39 testdone40 testdone41 testdone42 testdone43 testdone44 testdone45 testdone46 testdone47 testdone48 testdone49 symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11
 
 //reshape the data - the variables in the varlist are expanded to each different occasion (over n columns), things that are constant are kept as one column. i.e need to out those not constant in varlist
 
@@ -294,7 +292,7 @@ by numid: generate n1 = _n
 *replace n1=n1*10
 
 
-reshape wide eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin, i(numid) j(n1)
+reshape wide eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE, i(numid) j(n1)
 
 //add in an entrydate: make it the first one (zero) and make the fail type be 0
 generate eventdate0=indexdate-91 
@@ -307,15 +305,15 @@ generate failtype41=.
 
 *order eventdate0 eventdate10 eventdate100 eventdate110 eventdate120 eventdate130 eventdate140 eventdate150 eventdate160 eventdate170 eventdate180 eventdate190 eventdate20 eventdate200 eventdate210 eventdate220 eventdate230 eventdate240 eventdate250 eventdate260 eventdate270 eventdate280 eventdate290 eventdate30 eventdate300 eventdate310 eventdate320 eventdate330 eventdate340 eventdate350 eventdate360 eventdate370 eventdate380 eventdate390 eventdate40 eventdate400 eventdate41 eventdate50 eventdate60 eventdate70 eventdate80 eventdate90, seq
 
-foreach i of num 41/2 {
- local j = `i'-1
-replace eventdate`i' = indexdate if eventdate`j'!=. & eventdate`i'==.
-replace failtype`i' = 99 if failtype`j'!=. & failtype`i'==.
-}
+*foreach i of num 41/2 {
+ *local j = `i'-1
+*replace eventdate`i' = indexdate if eventdate`j'!=. & eventdate`i'==.
+*replace failtype`i' = 99 if failtype`j'!=. & failtype`i'==.
+*}
 
 
 //time to reshape to long: each id then has 42 different entries, many blank
-reshape long eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin, i(numid) j(J)
+reshape long eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE, i(numid) j(J)
 
 //drop lines without data
 drop if eventdate==.
@@ -418,7 +416,7 @@ restore
 }
 
 den duration = indexdate - enter
-
+tab duration 
 //sweet. 
 
 ##things to do 
