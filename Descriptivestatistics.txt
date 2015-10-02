@@ -9,13 +9,13 @@ use "H:\JOE\THIN\consults15final2.dta", clear
 preserve
 collapse age sex dob case_control BMI BMIzanthro typediab typebymed, by(id)
 codebook case_control
-//1926 cases and 7704 controls
+//1920 cases and 7680 controls
 sum age if case_con==1, d
 sum age if case_con==0, d
-//Just under 10 is median
+//Just under 10 is median (9.94) iqr 5-13
 
 tab sex case_cont, col
-//53% Male both cases and controls
+//53.44% Male both cases and controls
 
 tab typediab case_con, col
 tab typebymed case_con, col
@@ -24,4 +24,21 @@ bysort case_cont: sum BMI
 bysort case_cont: sum BMIzanthro
 restore
 
+*test proportion of BMIzanthro being calculable - 
+prtesti 7680 0.0982 1920 0.1318
+
+**to get median number of events in time period - after earlylate established use:
+preserve
+drop if early>4
+collapse case_control early failure, by(numid)
+replace failure = failure*4
+bysort case: sum failure, d
+median failure, by(case_control)
+
+restore
+preserve
+collapse case_control early failure, by(numid)
+replace failure = failure*13
+bysort case: sum failure, d
+median failure, by(case_control)
 
