@@ -2,7 +2,7 @@
 
 *set mem 1g
 
-*foreach z of numlist 13 13{
+
 
 use "H:\JOE\THIN\consults15final2.dta", clear
 
@@ -104,10 +104,12 @@ duplicates drop numid eventdate, force
 
 gen failtype=.
 
-tempfile temp 
+save "H:\JOE\THIN\tempfile.dta", replace
+
 *****Set up so that z determines the outcome measure and i the week 
-foreach z of num 13 13 13 13{
-use `temp', clear
+
+foreach z of num 13{
+use "H:\JOE\THIN\tempfile.dta", clear
 replace failtype = 1 if facetoface == 1 & `z'==1
 replace failtype = 2 if OOH == 1 & `z'==2
 replace failtype = 3 if Phone == 1 & `z'==3
@@ -130,7 +132,6 @@ replace failtype = 13 if anyconsult==1 & nonadmin!=1 & `z'==13
 
 *anyNICE - One or more in a consultation  
 replace failtype = 14 if NICEcodecount>0  & `z'==14
-
 
 
 ..................................................
@@ -307,32 +308,50 @@ xtset ngroup
 
 
 *for each time period: i (outcome z)
-
 local c=0
 local heading = ""
 local filemethod = "replace"
+*local outcome = ""
+local outcome = "facetoface" if  `z' == 1
+local outcome = "OOH" if  `z' == 2 
+local outcome = "Phone" if  `z' == 3 
+local outcome = "FaceAndPhone" if  `z' == 4
+local outcome =  "NonAdmin" if  `z' == 5
+local outcome = "DKA" if  `z' == 6
+local outcome =  "Thirst" if  `z' == 7
+local outcome =  "Polyuria" if  `z' == 8
+local outcome =  "Weight" if  `z' == 9
+local outcome =  "Fatigue" if  `z' == 10
+local outcome =  "AbdoPain" if  `z' == 11
+local outcome =  "AnyRecord" if  `z' == 12
+local outcome =  "Admin" if  `z' == 13
+local outcome =  "AnyNICE" if  `z' == 14
+	
 foreach i of num 1/13{
 preserve
-display "outcome Z`z' week -`i'"
+display "outcome Z`z'`outcome' week -`i'"
 keep if earlylate==`i'
 eststo: xtpoisson failure case_control, irr iter(30)
 drop if failure ==0
 tab failure case_cont, col
 *estpost tabstat failure, by(case_control) statistics(sum)
 
-*if `c' >0{
-*	local filemethod = "append"
-	*local heading = "h1(nil) h2(nil) h3(nil)"
-*	}
-*	estout e(sum) using H:\JOE\THIN\outputs\eventstableoutcome`z'.tsv , `filemethod' 
-*local c=`c'+1 
+if `c' >0{
+	local filemethod = "append"
+	local heading =  "h1(nil) h2(nil) h3(nil)"
+	}
+	la var failure "Children with number of `outcome' failures"
+	la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
+	la val failure failure
+	tabout failure case_control using H:\JOE\THIN\outputs\xXXeventstable`outcome'no`z'.tsv , cells(freq) `heading' `filemethod'  
+local c=`c'+1 
 restore
 }
 
 ***********
 
-******************
-estout using H:\JOE\THIN\outputs\Insulinoutcome`z'primaryRepeatedx4Temp.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) legend replace 
+***********
+estout using H:\JOE\THIN\outputs\Insoutcome`outcome'`z'primary.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) legend replace 
 eststo clear
 *display "Outcome Z`z'"
 *xtpoisson failure case_control early age, irr iter(30)
@@ -351,5 +370,3 @@ eststo clear
 
 *tab earlylate case_control 
 *sweet. 
-
-*************sort out tempfile!!!!!
