@@ -1,4 +1,4 @@
-*****Primary analysis code - rechecking events per day. 
+*****Sensiivity analysis code . 
 
 *set mem 1g
 
@@ -11,14 +11,14 @@ use "H:\JOE\THIN\consults15final2.dta", clear
 *****************************sensitivity analysis1******************************
 ********** - use only if specifically coded type1 DM ***************************
 *
-*gen marker = clusternum if typediab!=1 & case_control==1 
+gen marker = clusternum if typediab!=1 & case_control==1 
 **marker is positive if type of DM is not specifically coded as 1 (only)
 **generate totalcluster to fill all empty spaces in the clusternum group
-*egen totalcluster = total(marker), by(clusternum)
+egen totalcluster = total(marker), by(clusternum)
 **then drop those cases and controls with a non-zero totalcluster, and totalcluster
-*drop if totalcluster>0
-*drop totalcluster
-*drop marker
+drop if totalcluster>0
+drop totalcluster
+drop marker
 ********************************************************************************
 *preserve
 *collapse age case_control sex BMI, by (id)
@@ -339,7 +339,7 @@ capture xtpoisson failure case_control, irr iter(30)
 eststo, addscalars(errorcode _rc, replace)
 display _rc
 drop if failure ==0
-*tab failure case_cont, col
+tab failure case_cont, col
 
 
 if `c' >0{
@@ -349,7 +349,7 @@ if `c' >0{
 	la var failure "Children with number of `outcome' failures"
 	la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
 	la val failure failure
-	capture tabout failure case_control using H:\JOE\THIN\outputs\finalprimary`outcome'`z'.tsv , cells(freq) `heading' `filemethod'  
+	capture tabout failure case_control using H:\JOE\THIN\outputs\finalSens1`outcome'`z'.tsv , cells(freq) `heading' `filemethod'  
 local c=`c'+1 
 restore
 }
@@ -357,7 +357,7 @@ restore
 ***********
 
 ***********
-estout using H:\JOE\THIN\outputs\finalprimary`outcome'`z'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(errorcode) legend append
+estout using H:\JOE\THIN\outputs\finalSens1`outcome'`z'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(errorcode) legend append
 eststo clear
 *display "Outcome Z`z'"
 *xtpoisson failure case_control early age, irr iter(30)
