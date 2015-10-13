@@ -1,3 +1,5 @@
+**getting numbers of kids who could be picked up in each week - 
+* from: 
 *****Primary analysis code - rechecking events per day. 
 
 *set mem 1g
@@ -108,7 +110,7 @@ save "H:\JOE\THIN\tempfile.dta", replace
 
 *****Set up so that z determines the outcome measure and i the week 
 
-foreach z of num 1/14{
+foreach z of num 5{
 
 use "H:\JOE\THIN\tempfile.dta", clear
 replace failtype = 1 if facetoface == 1 & `z'==1
@@ -321,6 +323,20 @@ tab earlylate failure
 
 *generate an age vaiable
 *gen age = eventdate - dob
+
+preserve
+drop if earlylate > 2 
+drop if case_control==0 
+
+egen oneormore = total(failure), by (id) 
+collapse oneormore, by(id)
+tab one
+
+
+*collapse age case_control sex BMI, by (id)
+*bysort case_control: tab sex
+*bysort case_control: sum age, det
+
 
 *Inform stata is panel data, with ngroup as panelvar (the panel variable) remember we are dropping other time periods, so there shouldn't be extras within the id - that can't be the group defining variable! 
 xtset ngroup

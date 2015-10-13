@@ -1,8 +1,9 @@
-*****Primary analysis code - rechecking events per day. 
+*****Sensitivity 2.2*************************************************************************
+*****Self as controls************************
+***** Updated to include the test of alpha* using tempfile for each iteration****
+****`outcome' included*****
 
 *set mem 1g
-
-
 
 use "H:\JOE\THIN\consults15final2.dta", clear
 
@@ -11,22 +12,20 @@ use "H:\JOE\THIN\consults15final2.dta", clear
 *****************************sensitivity analysis1******************************
 ********** - use only if specifically coded type1 DM ***************************
 *
-*gen marker = clusternum if typediab!=1 & case_control==1 
+gen marker = clusternum if typediab!=1 & case_control==1 
 **marker is positive if type of DM is not specifically coded as 1 (only)
 **generate totalcluster to fill all empty spaces in the clusternum group
-*egen totalcluster = total(marker), by(clusternum)
+egen totalcluster = total(marker), by(clusternum)
 **then drop those cases and controls with a non-zero totalcluster, and totalcluster
-*drop if totalcluster>0
-*drop totalcluster
-*drop marker
+drop if totalcluster>0
+drop totalcluster
+drop marker
 ********************************************************************************
+**checking mean ages: 
 *preserve
-*collapse age case_control sex BMI, by (id)
-*bysort case_control: tab sex
-*bysort case_control: sum age, det
+*collapse age case_control, by (id)
+*sum age
 *restore
-
-
 
 * could drop some variables we don't need...
 drop indexevent weight weight_centile height height_centile medcode1 locate1 medcode2 locate2 medcode3 locate3 medcode4 locate4 medcode5 locate5 medcode6 locate6 medcode7 locate7 medcode8 locate8 medcode9 locate9 medcode10 locate10 medcode11 locate11 drug1 drug2 drug3 drug4 drug5 drug6 drug7 drug8 drug16 drug15 drug14 drug13 drug12 drug11 drug10 drug9 testdone1 testdone2 testdone3 testdone4 testdone5 testdone6 testdone7 testdone8 testdone9 testdone10 testdone11 testdone12 testdone13 testdone14 testdone15 testdone16 testdone17 testdone18 testdone19 testdone20 testdone21 testdone22 testdone23 testdone24 testdone25 testdone26 testdone27 testdone28 testdone29 testdone30 testdone31 testdone32 testdone33 testdone34 testdone35 testdone36 testdone37 testdone38 testdone39 testdone40 testdone41 testdone42 testdone43 testdone44 testdone45 testdone46 testdone47 testdone48 testdone49 symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11 age
@@ -38,19 +37,19 @@ egen numid =group(id)
 *need to generate controls from cases with an indexdate for the kids who are controls so that they are all represented.
 
 ***get rid of old controls:
-*drop if case_control ==0
+drop if case_control ==0
 
 
 *** new indexdate for controls: marker for nearest to a being 365 days before case indexdate
-*gen controlindexmarker = indexdate - 365
+gen controlindexmarker = indexdate - 365
 
 *need to identify nearest to controlindexmarker within id 
-*gen timefrommarker = sqrt((eventdate-controlindexmarker)^2)
-*sum timefrommarker
+gen timefrommarker = sqrt((eventdate-controlindexmarker)^2)
+sum timefrommarker
 * from 0 to 365
 
 *find nearest to zero within id:
-*egen minfrommarker = min(timefrommarker), by(id)
+egen minfrommarker = min(timefrommarker), by(id)
 *from 0-365 days
 
 ***if there is a consultation within 21 days - use that as an indexdate
@@ -58,34 +57,34 @@ egen numid =group(id)
 *** i.e. indexdate becomes the date of the minfrommarker or the date of controlindexmarker if minfrommarker is missing - for events on dates prior to those dates (the new indexdate) i.e. the controls
 
 *** get the minimum event from -365 days if within 21 days...
-*gen minmarker =1 if minfrommarker==timefrommarker & timefrommarker<=21
-*drop timefrommarker
+gen minmarker =1 if minfrommarker==timefrommarker & timefrommarker<=21
+drop timefrommarker
 
 **Superdate is the date nearest to -365 before indexdate if there is an event within 21 days
 **if not then it is indexdate-365 
-*gen specialdate = eventdate if minmarker==1
-*egen superdate = min(specialdate), by(id)
-*replace superdate = controlindexmarker if superdate==.
-*format super %td
-*drop specialdate
+gen specialdate = eventdate if minmarker==1
+egen superdate = min(specialdate), by(id)
+replace superdate = controlindexmarker if superdate==.
+format super %td
+drop specialdate
 
 
 *** make the cases->controls if the events happened before the superdate
-*replace case_control=0 if eventdate < superdate
+replace case_control=0 if eventdate < superdate
 
 ***replace the indexdate for the controls
-*replace indexdate = superdate if case_control==0 
+replace indexdate = superdate if case_control==0 
 
 *** change the case_id
-*replace case_id = id if case_control==0
+replace case_id = id if case_control==0
 
 ***change the control ids:
-*replace id = "control"+id if case_control==0 
+replace id = "control"+id if case_control==0 
 
 ***update the numids
-*egen newnumid=group(id)
-*replace numid = newnumid
-*drop newnumid
+egen newnumid=group(id)
+replace numid = newnumid
+drop newnumid
 
 ***make timebeforeindex accurate for new indexdates, and get rid of events after the index and before the 91 days of the *study period 
 *
@@ -116,6 +115,7 @@ replace failtype = 2 if OOH == 1 & `z'==2
 replace failtype = 3 if Phone == 1 & `z'==3
 replace failtype = 4 if faceAndPhone == 1 & `z'==4
 replace failtype = 5 if nonadmin == 1 & `z'==5
+
 
 *codes...
 replace failtype = 6 if dkaproxy == 1 & `z'==6
@@ -172,12 +172,12 @@ by numid: generate n1 = _n
 reshape wide eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE anyconsult, i(numid) j(n1)
 
 *add in an entrydate: make it the first one (zero) and make the fail type be 0
-*generate eventdate0=indexdate-91 
-*generate failtype0=0
+generate eventdate0=indexdate-91 
+generate failtype0=0
 
 *add in an exitdate so there is something to stsplit from
-*generate eventdate42=superdate
-*generate failtype42=88
+generate eventdate42=superdate
+generate failtype42=88
 
 *time to reshape to long: each id then has 42 different row entries, mostly blank, which need deleting
 reshape long eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE anyconsult, i(numid) j(J)
@@ -193,8 +193,8 @@ format eventdate %td
 
 
 ** make a variable wewereone to show which cases controls came from: 
-*gen wewereone = case_id if case_control==0 
-*replace wewereone = id if case_control==1 
+gen wewereone = case_id if case_control==0 
+replace wewereone = id if case_control==1 
 
 *drop duplicates within wewereone: want to drop if J=42 and case=1 if there are 2 42s within wewereone
 *duplicates report wewere J if failtype==88
@@ -202,35 +202,35 @@ format eventdate %td
 
 
 *generate duplic to count duplicates 
-*sort wewereone J  
-*quietly by wewereone J: gen duplic = cond(_N==1,0,_n) if failtype==88
+sort wewereone J  
+quietly by wewereone J: gen duplic = cond(_N==1,0,_n) if failtype==88
 
 *Drop those events that are already represented in the controls 
-*drop if duplic>0 & case_cont==1 & failtype==88
-*drop duplic
+drop if duplic>0 & case_cont==1 & failtype==88
+drop duplic
 
 *now the failtype 88s are unique values in wewereone:
-*duplicates report wewereone failtype if failtype==88
+duplicates report wewereone failtype if failtype==88
 
 
 *for the cases with failtype=88, update the caseid and change the id
-*replace case_id = id if failtype==88 & case_control==1 
-*replace id = "control"+id if failtype==88 & case_control==1
+replace case_id = id if failtype==88 & case_control==1 
+replace id = "control"+id if failtype==88 & case_control==1
 
 * change them to controls
-*replace case_control=0 if failtype==88 
+replace case_control=0 if failtype==88 
 
 *Update numid
-*drop numid
-*egen numid = group(id)
+drop numid
+egen numid = group(id)
 
 *now need to stset the data
 *make sure indexevent is accurate... (indexdates have changed AND need to change the indexdates of the control 88 new ones)
-*replace indexdate = superdate if case_control==0
+replace indexdate = superdate if case_control==0
 gen indexevent =1 if indexdate==eventdate
 
 *get failtype = 99 if it's the indexdate (this gets rid of the 88s)
-*replace failtype = 99 if indexevent==1
+replace failtype = 99 if indexevent==1
 
 *enter must have changed as well: 
 *create a new entry date
@@ -309,8 +309,8 @@ recode failure (.=0)
 *now drop the duplicates of id eventdate where failure =0 
 sort numid earlylate
 quietly by numid earlylate:gen dup1 = cond(_N==1,0,_n)
-drop if dup1>0 & failure==0
 
+drop if dup1>0 & failure==0
 *check no duplicates and sensecheck earlylate
 *duplicates report id earlylate
 tab earlylate
@@ -320,22 +320,22 @@ tab earlylate failure
 *now we have panel data with time from event in earlylate and number of events in each time period in failure
 
 *generate an age vaiable
-*gen age = eventdate - dob
+gen age = eventdate - dob
 
 *Inform stata is panel data, with ngroup as panelvar (the panel variable) remember we are dropping other time periods, so there shouldn't be extras within the id - that can't be the group defining variable! 
 xtset ngroup
 
 
 *for each time period: i (outcome z)
+
 local c=0
 local heading = ""
 local filemethod = "replace"
-
 foreach i of num 1/13{
 preserve
 display "outcome `outcome' Z`z' week -`i'"
 keep if earlylate==`i'
-capture xtpoisson failure case_control, irr iter(30) 
+capture xtpoisson failure case_control age, irr iter(30) 
 display e(chi2_c)
 disp chiprob(1, e(chi2_c))*0.5 
 estadd scalar palpha = chiprob(1, e(chi2_c))*0.5, replace
@@ -351,33 +351,16 @@ if `c' >0{
 	la var failure "Children with number of `outcome' failures"
 	la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
 	la val failure failure
-	capture tabout failure case_control using H:\JOE\THIN\outputs\Alphafinalprimary`z'`outcome'.tsv.tsv , cells(freq) `heading' `filemethod'  
+	capture tabout failure case_control using H:\JOE\THIN\outputs\Sensitivity3final`z'`outcome'Alpha.tsv , cells(freq) `heading' `filemethod'  
 local c=`c'+1 
 restore
 }
 
 ***********
 
-***********
-estout using H:\JOE\THIN\outputs\Alphafinalprimary`z'`outcome'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append
+******************
+estout using H:\JOE\THIN\outputs\Sensitivity3final`z'`outcome'Alpha.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append
 eststo clear
-*display "Outcome Z`z'"
-*xtpoisson failure case_control early age, irr iter(30)
-
-***need to reset some things...if looping over z 
-*replace failtype=.
-*xtset, clear
-*drop failure dup dup1 events J indexevent earlylate enter mgroup ngroup 
 }
 
-*done
-
-*xtpoisson failure case_control early, irr iter(30)
-*gen duration = indexdate - enter
-*tab duration 
-
-*tab earlylate case_control 
 *sweet. 
-
-***********
-*********** 
