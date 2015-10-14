@@ -1,13 +1,19 @@
-**getting numbers of kids who could be picked up in each week - 
-* from: 
-*****Primary analysis code - rechecking events per day. 
+*****Splitting the admin codes into subdivisions*****
+***** create indicator codes showing 1 for scripts and tests without a phone/face consultation. 
+**** then look at admin codes with none of these. 
+ 
+
+
 
 *set mem 1g
 
 
 
 use "H:\JOE\THIN\consults15final2.dta", clear
-
+gen scriptmarker=0
+foreach i of 1/16{
+replace scriptmarker = 1 if drug`i' XXXX !!! missing() 
+}
 
 ********************************************************************************
 *****************************sensitivity analysis1******************************
@@ -110,13 +116,9 @@ save "H:\JOE\THIN\tempfile.dta", replace
 
 *****Set up so that z determines the outcome measure and i the week 
 
-foreach z of num  1/14{
+foreach z of num 1/14{
 
 use "H:\JOE\THIN\tempfile.dta", clear
-local c=`z'-1
-local heading = ""
-local filemethod = "replace"
-
 replace failtype = 1 if facetoface == 1 & `z'==1
 replace failtype = 2 if OOH == 1 & `z'==2
 replace failtype = 3 if Phone == 1 & `z'==3
@@ -328,27 +330,62 @@ tab earlylate failure
 *generate an age vaiable
 *gen age = eventdate - dob
 
-
-drop if earlylate > 2 
-drop if case_control==0 
-
-egen oneormore = total(failure), by (id) 
-collapse oneormore, by(id)
-tab one
+*Inform stata is panel data, with ngroup as panelvar (the panel variable) remember we are dropping other time periods, so there shouldn't be extras within the id - that can't be the group defining variable! 
+xtset ngroup
 
 
+*for each time period: i (outcome z)
+local c=0
+local heading = ""
+local filemethod = "replace"
+
+foreach i of num 1/13{
+preserve
+display "outcome `outcome' Z`z' week -`i'"
+keep if earlylate==`i'
+capture xtpoisson failure case_control, irr iter(30) 
+display e(chi2_c)
+disp chiprob(1, e(chi2_c))*0.5 
+estadd scalar palpha = chiprob(1, e(chi2_c))*0.5, replace
+eststo, addscalars(errorcode _rc, replace)
+display _rc
+
+
+drop if failure ==0
 if `c' >0{
 	local filemethod = "append"
 	local heading =  "h1(nil) h2(nil) h3(nil)"
 	}
-	la var one "Children with number of records"
-	la def one 0 "No `outcome' failures" 1 "1 `outcome' failure" 2 "2 `outcome' failure" 3 "3 `outcome' failure" 4 "4 `outcome' failure" 5 "5 `outcome' failure" 6 "6 `outcome' failure" 7 "7 `outcome' failure"
-	la val one one
-	tabout one using H:\JOE\THIN\outputs\Numbertable.tsv, cells (freq col)  `heading' `filemethod'  
+	la var failure "Children with number of `outcome' failures"
+	la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
+	la val failure failure
+	capture tabout failure case_control using H:\JOE\THIN\outputs\Alphafinalprimary`z'`outcome'.tsv.tsv , cells(freq) `heading' `filemethod'  
 local c=`c'+1 
+restore
 }
 
+***********
 
+***********
+estout using H:\JOE\THIN\outputs\Alphafinalprimary`z'`outcome'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append
+eststo clear
+*display "Outcome Z`z'"
+*xtpoisson failure case_control early age, irr iter(30)
+
+***need to reset some things...if looping over z 
+*replace failtype=.
+*xtset, clear
+*drop failure dup dup1 events J indexevent earlylate enter mgroup ngroup 
+}
+
+*done
+
+*xtpoisson failure case_control early, irr iter(30)
+*gen duration = indexdate - enter
+*tab duration 
+
+*tab earlylate case_control 
+*sweet. 
 
 ***********
 *********** 

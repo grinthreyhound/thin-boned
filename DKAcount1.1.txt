@@ -1,0 +1,121 @@
+****DKA counting*****
+***Based on *****Primary analysis code 
+****how many index events were +ve for DKA markers? 
+**** how does this relate to the number of times children were seen in the 2 weeks prior?
+
+
+
+
+*set mem 1g
+
+
+
+use "H:\JOE\THIN\consults15final2.dta", clear
+
+
+********************************************************************************
+*****************************sensitivity analysis1******************************
+********** - use only if specifically coded type1 DM ***************************
+*
+*gen marker = clusternum if typediab!=1 & case_control==1 
+**marker is positive if type of DM is not specifically coded as 1 (only)
+**generate totalcluster to fill all empty spaces in the clusternum group
+*egen totalcluster = total(marker), by(clusternum)
+**then drop those cases and controls with a non-zero totalcluster, and totalcluster
+*drop if totalcluster>0
+*drop totalcluster
+*drop marker
+********************************************************************************
+*preserve
+*collapse age case_control sex BMI, by (id)
+*bysort case_control: tab sex
+*bysort case_control: sum age, det
+*restore
+
+
+
+* could drop some variables we don't need...
+drop indexevent weight weight_centile height height_centile medcode1 locate1 medcode2 locate2 medcode3 locate3 medcode4 locate4 medcode5 locate5 medcode6 locate6 medcode7 locate7 medcode8 locate8 medcode9 locate9 medcode10 locate10 medcode11 locate11 drug1 drug2 drug3 drug4 drug5 drug6 drug7 drug8 drug16 drug15 drug14 drug13 drug12 drug11 drug10 drug9 testdone1 testdone2 testdone3 testdone4 testdone5 testdone6 testdone7 testdone8 testdone9 testdone10 testdone11 testdone12 testdone13 testdone14 testdone15 testdone16 testdone17 testdone18 testdone19 testdone20 testdone21 testdone22 testdone23 testdone24 testdone25 testdone26 testdone27 testdone28 testdone29 testdone30 testdone31 testdone32 testdone33 testdone34 testdone35 testdone36 testdone37 testdone38 testdone39 testdone40 testdone41 testdone42 testdone43 testdone44 testdone45 testdone46 testdone47 testdone48 testdone49 symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11 age
+
+*NUmerical id:
+egen numid =group(id)
+
+****sensitivity analysis 2**********************************************************************************************
+*need to generate controls from cases with an indexdate for the kids who are controls so that they are all represented.
+
+***get rid of old controls:
+*drop if case_control ==0
+
+
+*** new indexdate for controls: marker for nearest to a being 365 days before case indexdate
+*gen controlindexmarker = indexdate - 365
+
+*need to identify nearest to controlindexmarker within id 
+*gen timefrommarker = sqrt((eventdate-controlindexmarker)^2)
+*sum timefrommarker
+* from 0 to 365
+
+*find nearest to zero within id:
+*egen minfrommarker = min(timefrommarker), by(id)
+*from 0-365 days
+
+***if there is a consultation within 21 days - use that as an indexdate
+***if not, will need to generate one
+*** i.e. indexdate becomes the date of the minfrommarker or the date of controlindexmarker if minfrommarker is missing - for events on dates prior to those dates (the new indexdate) i.e. the controls
+
+*** get the minimum event from -365 days if within 21 days...
+*gen minmarker =1 if minfrommarker==timefrommarker & timefrommarker<=21
+*drop timefrommarker
+
+**Superdate is the date nearest to -365 before indexdate if there is an event within 21 days
+**if not then it is indexdate-365 
+*gen specialdate = eventdate if minmarker==1
+*egen superdate = min(specialdate), by(id)
+*replace superdate = controlindexmarker if superdate==.
+*format super %td
+*drop specialdate
+
+
+*** make the cases->controls if the events happened before the superdate
+*replace case_control=0 if eventdate < superdate
+
+***replace the indexdate for the controls
+*replace indexdate = superdate if case_control==0 
+
+*** change the case_id
+*replace case_id = id if case_control==0
+
+***change the control ids:
+*replace id = "control"+id if case_control==0 
+
+***update the numids
+*egen newnumid=group(id)
+*replace numid = newnumid
+*drop newnumid
+
+***make timebeforeindex accurate for new indexdates, and get rid of events after the index and before the 91 days of the *study period 
+*
+
+************************************************************************************************************************
+replace timebeforeindex=indexdate-eventdate
+drop if case_control==0
+drop if timebeforeindex>14
+drop if timebeforeindex<0 
+
+tab dkaproxy timebeforeindex 
+
+gen DKAatIndex = 1 if dkaproxy==1 & timebeforeindex==0 
+recode DKAatIndex . = 0 
+
+egen sumofconsults = total(nonadmin), by(id)
+drop if timebeforeindex>0 
+
+drop if sumofconsults==0
+
+tab sumof DKA 
+
+logistic DKA sumof 
+
+
+***********
+*********** 
