@@ -1,4 +1,9 @@
-*****Primary analysis code - rechecking events per day. 
+*****
+***** creating truly panel data - getting each failure type into a line in the data
+**** 
+
+
+
 
 *set mem 1g
 
@@ -98,19 +103,83 @@ drop if timebeforeindex<0
 *start with 3 month data
 drop if timebeforeindex>91 
 
+****generate failtype 1 through 17 as indicator vaiables
+
+gen failtype1x = 1 if facetoface == 1 
+gen failtype2x = 1 if OOH == 1 
+gen failtype3x = 1 if Phone == 1 
+gen failtype4x = 1 if faceAndPhone == 1 
+gen failtype5x = 1 if nonadmin == 1 
+
+*codes...
+gen failtype6x = 1 if  dkaproxy == 1  
+gen failtype7x = 1 if  thirstmarker ==1 
+gen failtype8x = 1 if  polyuriamarker ==1 
+gen failtype9x = 1 if  weightmarker ==1 
+gen failtype10x = 1 if  fatiguemarker ==1 
+gen failtype11x = 1 if  abdopmarker ==1 
+
+*all consults
+gen failtype12x = 1 if anyconsult==1 
+
+*admin only
+gen failtype13x = 1 if anyconsult==1 & nonadmin!=1 
+
+*anyNICE - One or more in a consultation  
+gen failtype14x = 1 if NICEcodecount>0  
+
+*any prescription - 
+gen failtype15x = 1 if prescription==1  
+
+*admin- prescription
+gen failtype16x = 1 if adminscript==1  
+
+*admin - test 
+gen failtype17x = 1 if admintest==1 
+
+*replace failtypex with number of events in time period
+
+*get the timeperiod
+gen timeperiod1= inrange(timebeforeindex,1,7)
+gen timeperiod2= inrange(timebeforeindex,8,14)
+gen timeperiod3= inrange(timebeforeindex,15,21)
+gen timeperiod4= inrange(timebeforeindex,22,28)
+gen timeperiod5= inrange(timebeforeindex,29,35)
+gen timeperiod6= inrange(timebeforeindex,36,42)
+gen timeperiod7= inrange(timebeforeindex,43,49)
+gen timeperiod8= inrange(timebeforeindex,50,56)
+gen timeperiod9= inrange(timebeforeindex,57,63)
+gen timeperiod10= inrange(timebeforeindex,64,70)
+gen timeperiod11= inrange(timebeforeindex,71,77)
+gen timeperiod12= inrange(timebeforeindex,78,84)
+gen timeperiod13= inrange(timebeforeindex,85,91)
+
+foeach t of numlist 1/13{
+	foreach k of numlist 1/17{
+egen totalfailtype`k'intime`t' = total(failtype`k'x) by(id) if timeperiod`t'==1 
+}
+}
+
+	
+
+
+
+
+
+
 
 *there are 17/16 with>1 consult per day, drop these
 duplicates drop numid eventdate, force
 
-gen failtype=.
+
 
 save "H:\JOE\THIN\tempfile.dta", replace
 
 *****Set up so that z determines the outcome measure and i the week 
 
 foreach z of num 15/17{
+gen failtype`z'
 
-use "H:\JOE\THIN\tempfile.dta", clear
 replace failtype = 1 if facetoface == 1 & `z'==1
 replace failtype = 2 if OOH == 1 & `z'==2
 replace failtype = 3 if Phone == 1 & `z'==3
@@ -160,9 +229,7 @@ if `z' == 11 local outcome = "AbdoPain"
 if `z' == 12 local outcome = "AnyRecord"
 if `z' == 13 local outcome = "Admin"
 if `z' == 14 local outcome = "NICE"
-if `z' == 15 local outcome = "anyprescription"
-if `z' == 16 local outcome = "adminscript"
-if `z' == 17 local outcome = "admintest"
+
 
 ..................................................
 
@@ -290,9 +357,6 @@ egen ngroup = group(mgroup)
 *failtype = 12 if anyconsult=1
 *13 = Admin only
 *14 = one or more codes for NICE concerns in that consultation
-*15 any prescription
-*16 adminscript
-*17 admintest 
 
 gen failure=1 if failtype==`z'
 
@@ -333,7 +397,7 @@ tab earlylate failure
 
 *now we have panel data with time from event in earlylate and number of events in each time period in failure
 
-*generate an age variable
+*generate an age vaiable
 *gen age = eventdate - dob
 
 *Inform stata is panel data, with ngroup as panelvar (the panel variable) remember we are dropping other time periods, so there shouldn't be extras within the id - that can't be the group defining variable! 
@@ -375,7 +439,13 @@ restore
 ***********
 estout using H:\JOE\THIN\outputs\3Alphafinalprimary`z'`outcome'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append
 eststo clear
+*display "Outcome Z`z'"
+*xtpoisson failure case_control early age, irr iter(30)
 
+***need to reset some things...if looping over z 
+*replace failtype=.
+*xtset, clear
+*drop failure dup dup1 events J indexevent earlylate enter mgroup ngroup 
 }
 
 *done

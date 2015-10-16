@@ -1,0 +1,326 @@
+*Stata file for cleaning and analysing the sense checked THIN data in H:\JOE\THIN\all15wide_old.dta
+
+*stata 11 set memory: 
+*set memory 1g
+
+use "H:\JOE\THIN\all15wide_old.dta", clear
+
+*sort out z scores
+*for centiles need to use age at time of weighing Must install zanthro if not already done
+*need height in cm
+generate weightage = eventdate-dob if weight!=.
+replace weightage = weightage/365.25
+generate heightage = eventdate-dob if height!=.
+replace heightage = heightage/365.25
+replace height = height*100 if height<2
+replace height =. if height<40
+
+egen heightzanthro = zanthro(height,ha,UK), xvar(heightage) gender(sex) gencode(male=1, female=2)
+
+egen weightzanthro = zanthro(weight,wa,UK), xvar(weightage) gender(sex) gencode(male=1, female=2)
+
+*sort out BMI = weight/height in m squared
+drop BMI
+gen BMI = weight/(height/100)^2
+
+egen BMIzanthro = zanthro(BMI,ba,UK), xvar(weightage) gender(sex) gencode(male=1, female=2)
+
+
+*initially we are going to perform the analysis dropping cases with a record of 
+*t2dm or metformin etc rx without insulin
+*will also need to drop the controls as well
+
+*Therefore need to drop typediab==2 && 9
+*also typebymed==2
+
+*create new variable cluster to identify cases and controls in same matched cluster
+gen cluster = case_id if case_control==0 
+replace cluster = id if case_control==1
+egen clusternum = group(cluster)
+*clusternum is now an integer cluster marker
+
+gen marker = clusternum if typediab==2 | typediab==9 | typebymed==2
+* marker is positive if type of DM is 2 ever or metformin rx and no insulin
+* generate totalcluster to fill all empty spaces in the clusternum group
+egen totalcluster = total(marker), by(clusternum)
+*then drop those cases and controls with a non-zero totalcluster, and totalcluster
+drop if totalcluster>0
+drop totalcluster
+drop marker
+
+*****************************insulins*********************************************
+*Lets find the insulins: 
+gen insulinmarker = 0
+
+foreach i of numlist 1/16{ 
+replace insulinmarker = 1 if drug`i'=="Biphas aspart 30/70 pen 3mL"
+replace insulinmarker = 1 if drug`i'=="INSULIN DETEMIR 100iu/mL pen"
+replace insulinmarker = 1 if drug`i'=="U100 insulin syringe 0.5ml"
+replace insulinmarker = 1 if drug`i'=="Biphasic aspart 30/70 cart 3m"
+replace insulinmarker = 1 if drug`i'=="ISOPHANE INSULIN 100iu/mL 10m"
+replace insulinmarker = 1 if drug`i'=="INSULIN ISOPHANE HUMAN PRB inj 100 iu/ml"
+replace insulinmarker = 1 if drug`i'=="Generic Autopen 24 insulin pen 3ml/1-21 units"
+replace insulinmarker = 1 if drug`i'=="Generic Autopen Junior insulin pen 3ml/1-21 units"
+replace insulinmarker = 1 if drug`i'=="Generic Novopen 3 fun - red insulin pen 3ml/2-70 units"
+replace insulinmarker = 1 if drug`i'=="INSULIN GLARGINE inj 100 iu/ml"
+replace insulinmarker = 1 if drug`i'=="Generic Novopen 3 demi insulin pen 3ml/1-35 units"
+replace insulinmarker = 1 if regexm(testdone`i', "INSULIN") == 1
+replace insulinmarker = 1 if regexm(testdone`i', "insulin") == 1
+}
+
+****lets drop them and their controls if they occur >21 days before indexdate...
+**get the time: 
+gen scripttime = indexdate - eventdate if insulinmarker==1 
+
+**find the earliest date of being given insulin, within id, and apply it to all events of that id
+egen newcaseindexinsulin = min(eventdate)  if insulinmarker==1, by(id) 
+egen newcaseindexfullinsulin = min(newcaseindexinsulin), by(id)
+
+***and how far before the indexdate that was
+gen measure=newcaseindexfullinsulin - indexdate if case_control==1
+
+***expand this to the whole cluster:
+egen clustermeasure = min(measure), by(clusternum)
+
+*** drop those clusters of cases and controls with insulin scripts pre day -21
+drop if clustermeasure< -21
+
+*tidy up
+drop measure newcaseindexinsulin
+
+****need to make first prescription date be the indexdate if it is before the indexdate, otherwise remains as indexdate, for cases. 
+
+replace indexdate = newcaseindexfullinsulin if clustermeasure<0 & case_control==1 
+
+***need to do controls as well, but best to do that all in one go after adjusting for other codes too
+*** 
+
+*Need to change the case indexdate to include those consultations where the doctor was clearly thinking of diabetes.
+*This is to reduce biases due to recording delay
+
+***************Finding paraphanalia*********************************
+generate marker = 0 
+
+foreach i of numlist 1/16{
+replace marker = 1 if drug`i'=="STERILE DT TYPE C lancet"
+replace marker = 1 if drug`i'=="Blood glucose test strip T5b"
+replace marker = 1 if drug`i'=="NEEDLE STER SINGLE USE 0.4mm"
+replace marker = 1 if drug`i'=="Blood glucose test strip T5a"
+replace marker = 1 if drug`i'=="Generic Medisense G2 biosensor strips"
+replace marker = 1 if drug`i'=="Blood glucose test strip T6b"
+replace marker = 1 if drug`i'=="Sharps Bin container 1 litre"
+replace marker = 1 if drug`i'=="GLUCOSE 40% oral gel"
+replace marker = 1 if drug`i'=="GLUCAGON inj 1mg"
+replace marker = 1 if drug`i'=="Needle Clipping device"
+replace marker = 1 if drug`i'=="Ketonuria test strip"
+replace marker = 1 if drug`i'=="Blood glucose test strip T6a"
+replace marker = 1 if drug`i'=="GLUCAGON 1mg(1iu) inj pdr+dil"
+replace marker = 1 if drug`i'=="Generic OneTouch colorimetric strips"
+replace marker = 1 if drug`i'=="Generic Medisense Optium Beta-Ketone test strips"
+replace marker = 1 if drug`i'=="Generic Diastix strips"
+replace marker = 1 if drug`i'=="U100 single use ins syr+8mm ndle30G 0.5ml"
+replace marker = 1 if drug`i'=="Generic Ascensia Glucodisc biosensor discs"
+}
+
+**************Look at symptoms codes****************
+
+
+* look at the obvious ones and mark the consultation where they occurred:
+foreach var of varlist symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11{
+replace marker = 1 if `var'== "glycosuria"
+replace marker = 1 if `var'== "glycaemia test"
+replace marker = 1 if `var'== "hyperglycaemia"
+replace marker = 1 if `var'== "hypoglycaemia"
+replace marker = 1 if `var'== "urine glucose test"
+replace marker = 1 if `var'== "impaired glucose tole"
+replace marker = 1 if `var'== "ketonuria"
+replace marker = 1 if `var'== "thirst"
+replace marker = 1 if `var'== "diabetes"
+replace marker = 1 if regexm(`var', "diab") == 1
+}
+
+**********look at tests******************
+
+foreach i of numlist 1/49{
+replace marker = 1 if testdone`i' == "Fasting glucose"
+replace marker = 1 if testdone`i' == "Glucose Tolerance tes"
+replace marker = 1 if testdone`i' == "Hb A1C - Diabetic con"
+replace marker = 1 if testdone`i' == "Urinalysis - Glucose"
+replace marker = 1 if testdone`i' == "Urine dipstick for gl"
+replace marker = 1 if testdone`i' == "Urine dipstick for ke"
+replace marker = 1 if testdone`i' == "Blood glucose"
+*replace marker = 1 if testdone`i' == "Blood gases"
+*replace marker = 1 if testdone`i' == "Serum osmolality"
+*replace marker = 1 if testdone`i' == "Urine Biochemistry"
+replace marker = 1 if testdone`i' == "Diabetes annual check"
+replace marker = 1 if testdone`i' == "Diabetes current stat"
+replace marker = 1 if regexm(testdone`i', "diab") == 1
+}
+
+**************insulin scripts in the 21 day frame
+replace marker = 1 if insulinmarker==1 
+
+*drop some introduced in this dataset
+drop insulinmarker
+drop scripttime
+**********************************************
+
+*get the time that these took place at: in order to only keep those in timeframe
+gen markertime = indexdate-eventdate if marker==1 
+
+*need to decide a cut-off: Allow 21 days as this is our timeframe shift. get rid of -ve ones
+
+replace marker = 0 if markertime>21
+replace marker = 0 if markertime<0 
+*changes only for cases, 
+replace marker = 0 if case_cont==0 
+
+*now change indexdates to be largest value of markertime within id of cases 
+
+*create minimum indexdate within id, and give it to all within that ID: for cases
+egen newcaseindex = min(eventdate)  if marker==1, by(id) 
+egen newcaseindexfull = min(newcaseindex), by(id)
+
+*/bysort case_cont : sum newcaseindexfull  *check that no controls have new indexes -  it's fine. 
+
+*now can replace indexdate with earliest possible mention of diabetes related codes for cases
+replace newcaseindexfull = -99 if newcaseindexfull==.
+replace indexdate = newcaseindexfull if newcaseindexfull>0 & case_cont==1
+
+drop newcaseindex newcaseindexfull marker markertime
+
+*need to now sort out the indexdates for the controls. 
+*need to reset the indexdate of controls to be the indexdate of matched cases before resetting to being nearest date with consultation...(clusternum identifies matched groups)
+
+gen caseindex = indexdate if case_control==1
+egen groupindex = min(caseindex), by(clusternum) 
+replace indexdate = groupindex
+drop groupindex caseindex
+
+gen timebeforeindex = indexdate-eventdate
+sum timebeforeindex
+*from -41 to 457
+
+*need to identify nearest to zero within id for controls
+*make negatives positive:
+gen timefromindex = sqrt(timebeforeindex*timebeforeindex)
+* from 0 to 457
+
+*find nearest to zero within id:
+egen minfromcase = min(timefromindex), by(id)
+*from 0-37 days
+
+*make indexdate = date with min time difference from indexdate for controls only
+
+gen newcontrolindex = eventdate if timefromindex==minfromcase & case_control==0
+
+egen bestindexdate = min(newcontrolindex) if case_con==0, by(id) 
+
+replace indexdate = bestindexdate if case_control ==0 & bestindexdate!=.
+drop newcontrolindex bestindexdate minfromcase timefromindex
+
+replace timebeforeindex = indexdate-eventdate
+*sum timebeforeindex
+*from -43 to 478 - i.e. the 21 days either side of the original indexdate plus the indexdate
+*-52 to 478
+*so for some of them the indexdate has moved to the earliest date, but they still have records 6 weeks later
+*these must be removed at this point. 
+
+drop if timebeforeindex <0 
+
+
+*DKA codes at presentation - for this proxy of codes - emergency, ketonuria, dehydrated, dyspnoea, (unwell looking or equivalent) 
+
+*look at codes for: Thirst/polydipsia Polyuria Weight loss Fatigue Abdominal pain
+*in last 2 weeks
+
+
+gen dkaproxy = 0
+gen thirstmarker = 0
+gen polyuriamarker = 0
+gen weightmarker = 0
+gen fatiguemarker = 0
+gen abdopmarker = 0
+* mark the consultation where they occurred: 
+foreach var of varlist symptom1 symptom2 symptom3 symptom4 symptom5 symptom6 symptom7 symptom8 symptom9 symptom10 symptom11{
+replace thirstmarker = 1 if `var'== "thirst"
+replace polyuriamarker = 1 if `var'== "frequency, urinary"
+replace weightmarker = 1 if `var'== "weight"
+replace weightmarker = 1 if `var'=="weight symptom"
+replace weightmarker = 1 if `var'== "BMI"
+replace fatiguemarker = 1 if `var'== "fatigue"
+replace fatiguemarker = 1 if `var'== "drowsiness"
+replace abdopmarker = 1 if `var'== "abdominal pain"
+
+replace dkaproxy = 1 if `var'== "condition unstable"
+replace dkaproxy = 1 if `var'== "collapse"
+replace dkaproxy = 1 if `var'== "consciousness disturb"
+replace dkaproxy = 1 if `var'== "drowsiness"
+replace dkaproxy = 1 if `var'== "dyspnoea"
+replace dkaproxy = 1 if `var'== "hyperventilation"
+replace dkaproxy = 1 if `var'== "ketonuria"
+replace dkaproxy = 1 if `var'== "looks unwell"
+}
+
+*replace dkaproxy = 1 if `var'== "emergency" - not sure about this one. Can be emergency without dka 
+
+*how many of these codes are there? */NEED to deal with reshaping too if introducing new variables. 
+gen NICEcodecount = 0
+replace NICEcodecount = thirstmarker + polyuriamarker + weightmarker + fatiguemarker + abdopmarker
+
+gen anyNICE = 1 if NICEcodecount>1 
+
+/*type of consultation: factoface==day only
+gen facetoface = 0
+gen OOH = 0
+gen Phone =0
+gen  faceAndPhone = 0
+gen  nonadmin = 0
+
+
+* mark the consultation where they occurred: 
+foreach var of varlist  locate1 locate2 locate3 locate5 locate6 locate4  locate7 locate8 locate9 locate10 locate11{
+replace facetoface = 1 if `var'== "I"
+replace facetoface = 1 if `var'== "X"
+replace facetoface = 1 if `var'== "R"
+replace facetoface = 1 if `var'== "K"
+replace facetoface = 1 if `var'== ("C", "h", "i", "j", "k", "l")
+
+replace OOH = 1 if `var'== "B"
+replace OOH = 1 if `var'== "D"
+replace OOH = 1 if `var'== "F"
+replace OOH = 1 if `var'== "G"
+replace OOH = 1 if `var'== "H"
+replace OOH = 1 if `var'== "Z"
+replace OOH = 1 if `var'== "d"
+replace OOH = 1 if `var'== "f"
+replace OOH = 1 if `var'== "o"
+replace OOH = 1 if `var'== ("u", "m")
+
+
+replace Phone = 1 if `var'== "A"
+replace Phone = 1 if `var'== "J"
+replace Phone = 1 if `var'== ("U" "V")
+}
+
+gen prescription = 0 
+foreach i of num 1/16{
+replace scriptmarker = 1 if drug`i' !=""
+}
+
+gen test = 0 
+foreach i of num 1/46{
+replace testmarker=1 if testdone`i' !=""
+}
+
+
+replace faceAndPhone = 1 if facetoface == 1 | Phone==1
+replace nonadmin = 1 if facetoface == 1
+replace nonadmin = 1 if OOH == 1
+replace nonadmin = 1 if Phone == 1
+gen adminscript = 1 if prescription==1 & nonadmin !=1 
+gen admintest = 1 if test==1 & nonadmin !=1
+gen anyconsult = 1
+
+save "H:\JOE\THIN\consults15final3.dta", replace
+********************************************************

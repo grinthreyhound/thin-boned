@@ -1,19 +1,54 @@
 *****Splitting the admin codes into subdivisions*****
-***** create indicator codes showing 1 for scripts and tests without a phone/face consultation. 
+***** create indicator codes showing 1 for scripts (and same for tests) without a phone/face consultation. 
 **** then look at admin codes with none of these. 
  
 
 
 
-*set mem 1g
+set mem 1g
 
 
 
 use "H:\JOE\THIN\consults15final2.dta", clear
 gen scriptmarker=0
-foreach i of 1/16{
-replace scriptmarker = 1 if drug`i' XXXX !!! missing() 
+foreach i of num 1/16{
+replace scriptmarker = 1 if drug`i' !=""
 }
+
+gen testmarker=0
+foreach i of num 1/46{
+replace testmarker=1 if testdone`i' !=""
+}
+
+gen adminnotscripttest = 1 if nonadmin==0 & testmarker==0 & scriptmarker==0 
+tab locate1 if adminnot==1
+
+***to label the location codes need to change them to numeric, then define and apply the label: 
+encode locate1, gen(numericlocation)
+
+label def locate 39 "Triage" 38 "NHS direct report" 37 "GOS18 report (referral from optician)" 36 "Co-op home visit (collaborative out-of hours service by local GPãs)" 35 "Twilight visit" 34 "Residential home visit" 33 "Childrenãs home visit" 32 "Co-op telephone advice (collaborative out-of hours service by local GPãs)" 31 "Co-op surgery consultation (collaborative out-of hours service by local GPãs)" 30 "Minor injury service (service offered by GP surgery or hospital unit)" 29 "Walk in centre (minor illness & injury treatment ¹ not part of GP surgery)" 28 "Day case report (following surgical procedure in hospital without an overnight stay)" 27 "Home visit" 26 "Hospital Admission" 25 "Third party consultation" 24 "Telephone call to patient" 23 "Casualty attendance" 22 "Administration" 21 "Emergency Consultation" 20 "Mail to patient" 19 "Results Recording" 18 "Other" 17 "Repeat Issue" 16 "Letter from Outpatients" 15 "Discharge Details" 14 "Acute Visit by GP to patients home, usually during normal working hours" 13 "Telephone Call from Patient" 12 "Surgery Consultation" 11 "Out of Hours visit by Non-Practice Doctor, examination by a doctor other than the patients GP, often an emergency. Request for visit made either between 7-9am or 5-8 pm" 10 "Out of Hours visit by Practice Doctor, often an emergency. Request for visit made either between 7-9am or 5-8pm" 9 "Night Visit by Practice Doctor - often an emergency. Request for visit made at weekends or holidays either between 8pm and 7am," 8 "Mail from Patient" 7 "Night Visit by Local Rota, conducted by colleague or locum GP - often an emergency. Request for visit made either between 8pm and 7am, at weekends or holidays" 6 "Follow-up/routine visit" 5 "Night Visit by Deputising Service conducted by a locum GP - often an emergency. Request for visit made either between 8pm and 7am, at weekends or holidays" 4 "Clinic (often by nurse)" 3 "Data transferred from other system" 1 "Null record" 2 "Medicine management" 
+
+label val numericlocation locate 
+
+tab numericlocation if adminnot==1 
+
+tab numericlocation if nonadmin==0 
+
+****Looking at this we are going to have to re-look at what is a consultation or not.
+*Third party consultation -  lets put it in with phone calls
+*children's home visit - to home
+*residential home visit - to home
+*twighlight visit - to home 
+*co-op home visit - to home 
+
+foreach i of num 1/11{
+replace Phone=1 if locate`i'=="V"
+replace facetoface =1 if locate`i'==("h", "i", "j", "k", "l", "m")  
+}
+
+
+
+
 
 ********************************************************************************
 *****************************sensitivity analysis1******************************
