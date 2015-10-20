@@ -1,3 +1,5 @@
+*****need to test this and see number of null/admins not made of known stuff
+
 *Stata file for cleaning and analysing the sense checked THIN data in H:\JOE\THIN\all15wide_old.dta
 
 *stata 11 set memory: 
@@ -276,6 +278,10 @@ gen OOH = 0
 gen Phone =0
 gen  faceAndPhone = 0
 gen  nonadmin = 0
+gen admin = 0
+gen otherprovider = 0
+gen test = 0 
+gen prescription = 0 
 
 
 * mark the consultation where they occurred: 
@@ -284,33 +290,36 @@ replace facetoface = 1 if `var'== "I"
 replace facetoface = 1 if `var'== "X"
 replace facetoface = 1 if `var'== "R"
 replace facetoface = 1 if `var'== "K"
-replace facetoface = 1 if `var'== ("C", "h", "i", "j", "k", "l")
+replace facetoface = 1 if `var'== ("C", "h", "i", "j", "k", "l", "A", "9")
 
 replace OOH = 1 if `var'== "B"
 replace OOH = 1 if `var'== "D"
 replace OOH = 1 if `var'== "F"
 replace OOH = 1 if `var'== "G"
 replace OOH = 1 if `var'== "H"
-replace OOH = 1 if `var'== "Z"
 replace OOH = 1 if `var'== "d"
 replace OOH = 1 if `var'== "f"
 replace OOH = 1 if `var'== "o"
-replace OOH = 1 if `var'== ("u", "m")
+replace OOH = 1 if `var'== ("u", "m", "c")
 
 
-replace Phone = 1 if `var'== "A"
-replace Phone = 1 if `var'== "J"
-replace Phone = 1 if `var'== ("U" "V")
+replace Phone = 1 if `var'== ("U", "V", "J", "g")
+
+replace otherprovider = 1 if `var' ==("Z", "W", "T", "3", "L", "M", "Y", "a", "b")
+
+replace admin = 1 if `var' ==("n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "e", "S", "1", "2", "7", "8", "E", "0", "O", "Q")
+
+replace test = 1 if `var'==("4","5","6")
+
+replace prescription=1 if `var'==("N","P")
 }
 
-gen prescription = 0 
 foreach i of num 1/16{
-replace scriptmarker = 1 if drug`i' !=""
+replace prescription = 1 if drug`i' !=""
 }
 
-gen test = 0 
-foreach i of num 1/46{
-replace testmarker=1 if testdone`i' !=""
+foreach i of num 1/49{
+replace test=1 if testdone`i' !=""
 }
 
 
@@ -322,5 +331,22 @@ gen adminscript = 1 if prescription==1 & nonadmin !=1
 gen admintest = 1 if test==1 & nonadmin !=1
 gen anyconsult = 1
 
+
 save "H:\JOE\THIN\consults15final3.dta", replace
 ********************************************************
+
+***look at the makeup of the administrative only codes: 
+
+preserve
+gen admin = 0
+replace admin=1 if nonadmin==0
+
+gen missingadmin = 0 
+replace missingadmin=1 if test==0 & prescription==0
+replace missingadmin=0 if nonadmin==1 
+
+
+tab symptom1 if missingadmin==1
+tab locate1 if missingadmin==1 
+
+

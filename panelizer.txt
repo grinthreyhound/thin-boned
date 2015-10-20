@@ -154,67 +154,18 @@ gen timeperiod11= inrange(timebeforeindex,71,77)
 gen timeperiod12= inrange(timebeforeindex,78,84)
 gen timeperiod13= inrange(timebeforeindex,85,91)
 
-foeach t of numlist 1/13{
+
+foreach t of numlist 1/13{
 	foreach k of numlist 1/17{
-egen totalfailtype`k'intime`t' = total(failtype`k'x) by(id) if timeperiod`t'==1 
+bysort id: egen totalfailtype`k'intime`t' = total(failtype`k'x) if timeperiod`t'==1 
+replace totalfailtype`k'intime`t' = 0 if totalfailtype`k'intime`t'==.
+egen failures`k'time`t' = max(totalfailtype`k'intime`t'), by(numid)
 }
 }
 
-	
-
-
-
-
-
-
-
-*there are 17/16 with>1 consult per day, drop these
-duplicates drop numid eventdate, force
-
-
-
-save "H:\JOE\THIN\tempfile.dta", replace
-
-*****Set up so that z determines the outcome measure and i the week 
-
-foreach z of num 15/17{
-gen failtype`z'
-
-replace failtype = 1 if facetoface == 1 & `z'==1
-replace failtype = 2 if OOH == 1 & `z'==2
-replace failtype = 3 if Phone == 1 & `z'==3
-replace failtype = 4 if faceAndPhone == 1 & `z'==4
-replace failtype = 5 if nonadmin == 1 & `z'==5
-
-*codes...
-replace failtype = 6 if dkaproxy == 1 & `z'==6
-replace failtype = 7 if thirstmarker ==1 & `z'==7
-replace failtype = 8 if polyuriamarker ==1 & `z'==8
-replace failtype = 9 if weightmarker ==1 & `z'==9
-replace failtype = 10 if fatiguemarker ==1 & `z'==10
-replace failtype = 11 if abdopmarker ==1 & `z'==11
-
-*all consults
-replace failtype = 12 if anyconsult==1 & `z'==12
-
-*admin only
-replace failtype = 13 if anyconsult==1 & nonadmin!=1 & `z'==13
-
-*anyNICE - One or more in a consultation  
-replace failtype = 14 if NICEcodecount>0  & `z'==14
-
-*any prescription - 
-replace failtype = 15 if prescription==1  & `z'==15
-
-*admin- prescription
-replace failtype = 16 if adminscript==1  & `z'==16
-
-*admin - test 
-replace failtype = 17 if admintest==1 & `z'==17
-
-la def outcomes 1 "FaceToFace" 2 "OOH" 3 "PhoneConsult" 4 "FaceAndPhone" 5 "NonAdmin" 6 "DKA" 7 "Thirst" 8 "Polyuria" 9 "Weight" 10 "Fatigue" 11 "AbdoPain" 12 "AnyRecord" 13 "Admin" 14 "NICE
-la val failtype outcomes
-
+local outcome = ""
+foreach z of numlist 1/17{
+	foreach t of numlist 1/13{
 if `z' == 1 local outcome = "FaceToFace"
 if `z' == 2 local outcome = "OOH"
 if `z' == 3 local outcome = "Phone"
@@ -229,233 +180,76 @@ if `z' == 11 local outcome = "AbdoPain"
 if `z' == 12 local outcome = "AnyRecord"
 if `z' == 13 local outcome = "Admin"
 if `z' == 14 local outcome = "NICE"
+if `z' == 15 local outcome = "AnyScript"
+if `z' == 16 local outcome = "AdminScript"
+if `z' == 17 local outcome = "Test"
 
+rename failures`z'time`t' f`outcome't`t'
+}
+}
 
-..................................................
+***Now need to replace the duplicates in each time period:
 
+duplicates drop id fAnyRecordt1, force 
 
-*need to convert snapshot data to survival time data: reshape to wide then can add events (for entry exit etc) and then reshape back to long... 
+drop  failtype* timeperiod* totalfailtype* 
 
-*need panel data, i.e. entries for each id within each time period, rather then each eventdate
-*to do this need to st split on time, and need the entry exit etc to do this. 
+**now reshape to long: 
+reshape long fFaceToFacet fOOHt fPhonet fFaceAndPhonet fNonAdmint fDKAt fThirstt fPolyuriat fWeightt fFatiguet fAbdoPaint fAnyRecordt fAdmint fNICEt fAnyScriptt fAdminScriptt fTestt, i(id) j(earlylate)
 
-*need to number the events
-*if don't drop earlier consultations (timebeforeindex >91 as earlier)end up with n1 up to 185
+***now have panel data with earlylate giving time in weeks prior to indexdate 
 
-sort numid eventdate
-by numid: generate n1 = _n
-
-*reshape the data - the variables in the varlist are expanded to each different occasion (over n columns), things that are constant are kept as one column. i.e need to out those not constant in varlist
-
-reshape wide eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE anyconsult, i(numid) j(n1)
-
-*add in an entrydate: make it the first one (zero) and make the fail type be 0
-*generate eventdate0=indexdate-91 
-*generate failtype0=0
-
-*add in an exitdate so there is something to stsplit from
-*generate eventdate42=superdate
-*generate failtype42=88
-
-*time to reshape to long: each id then has 42 different row entries, mostly blank, which need deleting
-reshape long eventdate weightage heightage BMI failtype heightzanthro weightzanthro  BMIzanthro timebeforeindex dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker facetoface OOH Phone faceAndPhone nonadmin NICEcodecount anyNICE anyconsult, i(numid) j(J)
-
-*drop lines without data
-drop if eventdate==.
-format eventdate %td
-
-******now have added an event for the indexdate. 
-*In sensitivity 2 some of the controls have no events and are therefore represented by failtype 88 in cases only
-*need to make these into controls
-*but some of them have failtype 88 in the cases and controls from the same patient (where they were in the dataset in the right timeframe 
-
-
-** make a variable wewereone to show which cases controls came from: 
-*gen wewereone = case_id if case_control==0 
-*replace wewereone = id if case_control==1 
-
-*drop duplicates within wewereone: want to drop if J=42 and case=1 if there are 2 42s within wewereone
-*duplicates report wewere J if failtype==88
-
-
-
-*generate duplic to count duplicates 
-*sort wewereone J  
-*quietly by wewereone J: gen duplic = cond(_N==1,0,_n) if failtype==88
-
-*Drop those events that are already represented in the controls 
-*drop if duplic>0 & case_cont==1 & failtype==88
-*drop duplic
-
-*now the failtype 88s are unique values in wewereone:
-*duplicates report wewereone failtype if failtype==88
-
-
-*for the cases with failtype=88, update the caseid and change the id
-*replace case_id = id if failtype==88 & case_control==1 
-*replace id = "control"+id if failtype==88 & case_control==1
-
-* change them to controls
-*replace case_control=0 if failtype==88 
-
-*Update numid
-*drop numid
-*egen numid = group(id)
-
-*now need to stset the data
-*make sure indexevent is accurate... (indexdates have changed AND need to change the indexdates of the control 88 new ones)
-*replace indexdate = superdate if case_control==0
-gen indexevent =1 if indexdate==eventdate
-
-*get failtype = 99 if it's the indexdate (this gets rid of the 88s)
-*replace failtype = 99 if indexevent==1
-
-*enter must have changed as well: 
-*create a new entry date
-gen enter = indexdate-91
-format enter %td
-
-*need to replace failtype==X below to match analysis if not using z 
-
-stset eventdate, id(numid) fail(failtype==`z') exit(failtype==99, time .) origin(enter) enter(enter) scale(1)
-stsplit earlylate, at(7(7)91) after(enter) 
-stset, clear
-*Need to turn earlylate into an ordinal thingy of weeks before indexdate
-recode earlylate (0=13) (7=12) (14=11) (21=10) (28=9) (35=8) (42=7) (49=6) (56=5) (63=4) (70=3) (77=2) (84=1) 
-
-****indexevent gets overexpanded - can only use failtype=99 after stsetting 
-
-
-*need a matching variable - for matched case/control groups: strings not allowed, so number them: (can't do this before stsetting as doesn't expand cluster identifier)
-*the old ID is a good one now
-
+***Need to generate ngroup to identify clusters:
 generate mgroup = id
 replace mgroup = case_id if case_control==0 
 
 egen ngroup = group(mgroup)
 
-*to use Xt poisson need to xtset the data: delare it to be panel data: xtset panelvar timevar
-*xtsetting is a new command, *Panel data assumes there have been observations I think, so STset/stsplit first
-*cant use string id so need to group this  NB: if want to keep labels could instead use : encode id,gen(numid) 
-
-
-
-*create failure from the failtype (1 initially) 
-*failtype = 1 if facetoface
- *failtype = 2 if OOH = 1
- *failtype = 3 if Phone = 1
- *failtype = 4 if faceAndPhone = 1
- *failtype = 5 if nonadmin = 1
-
-*codes...
- *failtype = 6 if dkaproxy = 1
- *failtype = 7 if thirstmarker =1
- *failtype = 8 if polyuriamarker =1
- *failtype = 9 if weightmarker =1
- *failtype = 10 if fatiguemarker =1
- *failtype = 11 if abdopmarker =1
-*failtype = 12 if anyconsult=1
-*13 = Admin only
-*14 = one or more codes for NICE concerns in that consultation
-
-gen failure=1 if failtype==`z'
-
-*Make failure missing values ==0
-recode failure(.=0)
-
-*Don't count failures on the indexdate - for cases or controls
-replace failure = 0 if indexevent==1
-*replace failure = 0 if failtype==99
-
-
-*now need to sort out multiples: caused by some presenting >1 time in stplit period (including >1 per day for some)
-*generate dup to count duplicates (of each event type, not total events in the time period!!)
-*make sure that this is not getting rid
-sort numid earlylate failure
-quietly by numid earlylate failure: gen dup = cond(_N==1,0,_n) 
-*get the number of events in each duplicated time period (but not if failure!=1)
-by numid earlylate failure: egen events = max(dup) if failure==1
-replace events = 1 if failure==1 & dup==0
-*drop duplicates in rows
-drop if dup>1 
-drop if earlylate==.
-
-*now redefine the failures to be the number of events: failure is now the number of events in the time period
-replace failure = events if events>failure
-recode failure (.=0)
-
-*now drop the duplicates of id eventdate where failure =0 
-sort numid earlylate
-quietly by numid earlylate:gen dup1 = cond(_N==1,0,_n)
-drop if dup1>0 & failure==0
-
-*check no duplicates and sensecheck earlylate
-*duplicates report id earlylate
-tab earlylate
-tab failure
-tab earlylate failure
-
-*now we have panel data with time from event in earlylate and number of events in each time period in failure
-
-*generate an age vaiable
-*gen age = eventdate - dob
-
 *Inform stata is panel data, with ngroup as panelvar (the panel variable) remember we are dropping other time periods, so there shouldn't be extras within the id - that can't be the group defining variable! 
+
 xtset ngroup
 
-
-*for each time period: i (outcome z)
 local c=0
 local heading = ""
 local filemethod = "replace"
 
-foreach i of num 1/13{
+foreach var of varlist fAnyRecordt fAdmint{
+
+foreach i of numlist 1/13{
 preserve
-display "outcome `outcome' Z`z' week -`i'"
 keep if earlylate==`i'
-capture xtpoisson failure case_control, irr iter(30) 
+capture xtpoisson `var' case_control, irr iter(30) 
 display e(chi2_c)
 disp chiprob(1, e(chi2_c))*0.5 
 estadd scalar palpha = chiprob(1, e(chi2_c))*0.5, replace
 eststo, addscalars(errorcode _rc, replace)
 display _rc
 
-
-drop if failure ==0
+drop if `var' ==0
 if `c' >0{
 	local filemethod = "append"
 	local heading =  "h1(nil) h2(nil) h3(nil)"
 	}
-	la var failure "Children with number of `outcome' failures"
+	la var `var' "Children with number of `var' failures"
 	la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
-	la val failure failure
-	capture tabout failure case_control using H:\JOE\THIN\outputs\3Alphafinalprimary`z'`outcome'.tsv , cells(freq) `heading' `filemethod'  
+	la val `var' failure
+	capture tabout `var' case_control using H:\JOE\THIN\outputs\panelized`var'.tsv , cells(freq) `heading' `filemethod'  
 local c=`c'+1 
 restore
 }
 
-***********
 
-***********
-estout using H:\JOE\THIN\outputs\3Alphafinalprimary`z'`outcome'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append
+estout using H:\JOE\THIN\outputs\panelized`var'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append
 eststo clear
-*display "Outcome Z`z'"
-*xtpoisson failure case_control early age, irr iter(30)
-
-***need to reset some things...if looping over z 
-*replace failtype=.
-*xtset, clear
-*drop failure dup dup1 events J indexevent earlylate enter mgroup ngroup 
 }
 
-*done
+****any unaccounted for admins?
+gen missing = 0
+replace missing =1 if fAdmint==1
+replace missing =0 if fAdminScriptt==1
+replace missing =0 if fTestt==1
 
-*xtpoisson failure case_control early, irr iter(30)
-*gen duration = indexdate - enter
-*tab duration 
 
-*tab earlylate case_control 
-*sweet. 
 
 ***********
 *********** 
