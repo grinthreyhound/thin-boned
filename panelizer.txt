@@ -1,6 +1,7 @@
 *****
-***** creating truly panel data - getting each failure type into a line in the data
+***** creating true panel data - getting each failure type into a line in the data
 **** 
+Need to get the regressions going and checked
 
 
 
@@ -103,7 +104,28 @@ drop if timebeforeindex<0
 *start with 3 month data
 drop if timebeforeindex>91 
 
-****generate failtype 1 through 17 as indicator vaiables
+****descriptives: 
+***get numbers of consultations in each category: tabulate by case_control
+
+preserve
+drop if timebeforeindex==0 
+local c=0
+local heading = ""
+local filemethod = "replace"
+
+foreach var of varlist anyconsult facetoface Phone faceAndPhone indirect OOH otherprovider prescription test admin nonadmin  {
+	if `c' >0{
+		local filemethod = "append"
+		local heading =  "h1(nil) h2(`var') h3(nil)"
+		}
+	tabout `var' case_control using H:\JOE\THIN\outputs\EventTypeTable.tsv , cells(freq) `heading' `filemethod'  ptotal(none)
+local c=`c'+1 
+}
+restore
+
+
+
+****generate failtype 1 through 16 as indicator vaiables
 
 gen failtype1x = 1 if facetoface == 1 
 gen failtype2x = 1 if OOH == 1 
@@ -123,19 +145,16 @@ gen failtype11x = 1 if  abdopmarker ==1
 gen failtype12x = 1 if anyconsult==1 
 
 *admin only
-gen failtype13x = 1 if anyconsult==1 & nonadmin!=1 
+gen failtype13x = 1 if admin==1 
 
 *anyNICE - One or more in a consultation  
 gen failtype14x = 1 if NICEcodecount>0  
 
-*any prescription - 
+*prescription
 gen failtype15x = 1 if prescription==1  
 
-*admin- prescription
-gen failtype16x = 1 if adminscript==1  
-
-*admin - test 
-gen failtype17x = 1 if admintest==1 
+*test 
+gen failtype16x = 1 if test==1 
 
 *replace failtypex with number of events in time period
 
@@ -156,15 +175,15 @@ gen timeperiod13= inrange(timebeforeindex,85,91)
 
 
 foreach t of numlist 1/13{
-	foreach k of numlist 1/17{
-bysort id: egen totalfailtype`k'intime`t' = total(failtype`k'x) if timeperiod`t'==1 
+	foreach k of numlist 1/16{
+bysort numid: egen totalfailtype`k'intime`t' = total(failtype`k'x) if timeperiod`t'==1 
 replace totalfailtype`k'intime`t' = 0 if totalfailtype`k'intime`t'==.
-egen failures`k'time`t' = max(totalfailtype`k'intime`t'), by(numid)
+bysort numid: egen failures`k'time`t' = max(totalfailtype`k'intime`t')
 }
 }
 
 local outcome = ""
-foreach z of numlist 1/17{
+foreach z of numlist 1/16{
 	foreach t of numlist 1/13{
 if `z' == 1 local outcome = "FaceToFace"
 if `z' == 2 local outcome = "OOH"
@@ -180,22 +199,27 @@ if `z' == 11 local outcome = "AbdoPain"
 if `z' == 12 local outcome = "AnyRecord"
 if `z' == 13 local outcome = "Admin"
 if `z' == 14 local outcome = "NICE"
-if `z' == 15 local outcome = "AnyScript"
-if `z' == 16 local outcome = "AdminScript"
-if `z' == 17 local outcome = "Test"
+if `z' == 15 local outcome = "Prescription"
+if `z' == 16 local outcome = "Test"
+
 
 rename failures`z'time`t' f`outcome't`t'
 }
 }
 
 ***Now need to replace the duplicates in each time period:
+preserve
+**get number of anyconsults now: 29,000
+* tab anyconsult case_cont
+* drop if timebeforeindex==0
+
 
 duplicates drop id fAnyRecordt1, force 
 
 drop  failtype* timeperiod* totalfailtype* 
 
 **now reshape to long: 
-reshape long fFaceToFacet fOOHt fPhonet fFaceAndPhonet fNonAdmint fDKAt fThirstt fPolyuriat fWeightt fFatiguet fAbdoPaint fAnyRecordt fAdmint fNICEt fAnyScriptt fAdminScriptt fTestt, i(id) j(earlylate)
+reshape long fFaceToFacet fOOHt fPhonet fFaceAndPhonet fNonAdmint fDKAt fThirstt fPolyuriat fWeightt fFatiguet fAbdoPaint fAnyRecordt fAdmint fNICEt fPrescriptiont fTestt, i(id) j(earlylate)
 
 ***now have panel data with earlylate giving time in weeks prior to indexdate 
 
@@ -244,10 +268,7 @@ eststo clear
 }
 
 ****any unaccounted for admins?
-gen missing = 0
-replace missing =1 if fAdmint==1
-replace missing =0 if fAdminScriptt==1
-replace missing =0 if fTestt==1
+
 
 
 

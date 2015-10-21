@@ -1,6 +1,6 @@
 *****need to test this and see number of null/admins not made of known stuff
 
-*Stata file for cleaning and analysing the sense checked THIN data in H:\JOE\THIN\all15wide_old.dta
+*Stata file for cleaning and analysing the sense checked THIN data in *H:\JOE\THIN\all15wide_old.dta
 
 *stata 11 set memory: 
 *set memory 1g
@@ -272,16 +272,13 @@ replace NICEcodecount = thirstmarker + polyuriamarker + weightmarker + fatiguema
 
 gen anyNICE = 1 if NICEcodecount>1 
 
-/*type of consultation: factoface==day only
-gen facetoface = 0
-gen OOH = 0
-gen Phone =0
-gen  faceAndPhone = 0
-gen  nonadmin = 0
-gen admin = 0
-gen otherprovider = 0
-gen test = 0 
-gen prescription = 0 
+/*type of consultation: generate variales, facetoface==day only
+gen anyconsult = 1
+
+foreach var of newlist facetoface OOH Phone faceAndPhone nonadmin admin otherprovider test prescription indirect { 
+gen `var' =0
+}
+
 
 
 * mark the consultation where they occurred: 
@@ -300,14 +297,14 @@ replace OOH = 1 if `var'== "H"
 replace OOH = 1 if `var'== "d"
 replace OOH = 1 if `var'== "f"
 replace OOH = 1 if `var'== "o"
-replace OOH = 1 if `var'== ("u", "m", "c")
+replace OOH = 1 if `var'== ("m", "c")
 
 
-replace Phone = 1 if `var'== ("U", "V", "J", "g")
+replace Phone = 1 if `var'== ("u","U", "V", "J", "g")
 
-replace otherprovider = 1 if `var' ==("Z", "W", "T", "3", "L", "M", "Y", "a", "b")
+replace otherprovider = 1 if `var' ==("Z", "W", "T", "3", "L", "M", "Y", "a", "b", "o", "p", "q", "n", "r", "s", "t",)
 
-replace admin = 1 if `var' ==("n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "e", "S", "1", "2", "7", "8", "E", "0", "O", "Q")
+replace admin = 1 if `var' ==( "v", "w", "x", "y", "e", "S", "1", "2", "7", "8", "E", "0", "O", "Q")
 
 replace test = 1 if `var'==("4","5","6")
 
@@ -322,31 +319,45 @@ foreach i of num 1/49{
 replace test=1 if testdone`i' !=""
 }
 
+****assert the heirarchy: Admin - 
+foreach var of varlist test prescription otherprovider OOH Phone facetoface{
+replace admin = 0 if `var' ==1
+}
+
+foreach var of varlist prescription otherprovider OOH Phone facetoface{
+replace test = 0 if `var'==1
+}
+
+foreach var of varlist  otherprovider OOH Phone facetoface{
+replace prescription = 0 if `var'==1
+}
+
+foreach var of varlist   OOH Phone facetoface{
+replace otherprovider = 0 if `var'==1
+}
+
+foreach var of varlist   Phone facetoface{
+replace OOH = 0 if `var'==1
+}
+
+foreach var of varlist  facetoface{
+replace Phone = 0 if `var'==1
+}
+
+
+**gen unknown = 0
+**replace unknown =1 if  prescription==0 & test==0 & otherprovider==0 & admin==0 & nonadmin ==0 & faceAndPhone==0 & Phone==0 & OOH==0 & facetoface==0 & anyNICE==0
+
+** there are no (known) unknowns now
 
 replace faceAndPhone = 1 if facetoface == 1 | Phone==1
-replace nonadmin = 1 if facetoface == 1
-replace nonadmin = 1 if OOH == 1
-replace nonadmin = 1 if Phone == 1
-gen adminscript = 1 if prescription==1 & nonadmin !=1 
-gen admintest = 1 if test==1 & nonadmin !=1
-gen anyconsult = 1
+replace nonadmin = 1 if admin==0 
+replace indirect = 1 if faceAndPhone==0 & OOH==1 | otherprovider==1 | prescription==1 | test==1 | admin==1 
 
 
 save "H:\JOE\THIN\consults15final3.dta", replace
 ********************************************************
 
-***look at the makeup of the administrative only codes: 
 
-preserve
-gen admin = 0
-replace admin=1 if nonadmin==0
-
-gen missingadmin = 0 
-replace missingadmin=1 if test==0 & prescription==0
-replace missingadmin=0 if nonadmin==1 
-
-
-tab symptom1 if missingadmin==1
-tab locate1 if missingadmin==1 
 
 
