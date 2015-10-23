@@ -319,6 +319,11 @@ foreach i of num 1/49{
 replace test=1 if testdone`i' !=""
 }
 
+***generate list style (non hierarchical) outcomes:
+gen listscript= prescription
+gen listtest = test
+
+
 ****assert the heirarchy: Admin - 
 foreach var of varlist test prescription otherprovider OOH Phone facetoface{
 replace admin = 0 if `var' ==1

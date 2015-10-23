@@ -1,4 +1,4 @@
-*****
+*****Sensitivity analysis1******************************
 ***** creating true panel data - getting each failure type into a line in the data
 **** Primary analysis
 
@@ -16,14 +16,14 @@ use "H:\JOE\THIN\consults15final3.dta", clear
 *****************************sensitivity analysis1******************************
 ********** - use only if specifically coded type1 DM ***************************
 *
-*gen marker = clusternum if typediab!=1 & case_control==1 
+gen marker = clusternum if typediab!=1 & case_control==1 
 **marker is positive if type of DM is not specifically coded as 1 (only)
 **generate totalcluster to fill all empty spaces in the clusternum group
-*egen totalcluster = total(marker), by(clusternum)
+egen totalcluster = total(marker), by(clusternum)
 **then drop those cases and controls with a non-zero totalcluster, and totalcluster
-*drop if totalcluster>0
-*drop totalcluster
-*drop marker
+drop if totalcluster>0
+drop totalcluster
+drop marker
 ********************************************************************************
 *preserve
 *collapse age case_control sex BMI, by (id)
@@ -283,7 +283,7 @@ foreach i of numlist `weeks'{
 		la var `var' "Children with number of `var' failures"
 		la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
 		la val `var' failure
-		capture tabout `var' case_control using H:\JOE\THIN\outputs\panelized`var'.tsv , cells(freq) `heading' `filemethod'  
+		capture tabout `var' case_control using H:\JOE\THIN\outputs\S1panelized`var'.tsv , cells(freq) `heading' `filemethod'  
 		restore
 		local c=`c'+1 
 }
@@ -299,7 +299,7 @@ foreach i of numlist `weeks'{
 	display _rc
 restore
 }
-estout using H:\JOE\THIN\outputs\panelized`var'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append 
+estout using H:\JOE\THIN\outputs\S1panelized`var'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append 
 eststo clear
 }
 

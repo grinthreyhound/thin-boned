@@ -1,4 +1,4 @@
-*****
+*****Sensitivity analysis 3: own controls and not using any unspecified type dms.
 ***** creating true panel data - getting each failure type into a line in the data
 **** Primary analysis
 
@@ -16,14 +16,14 @@ use "H:\JOE\THIN\consults15final3.dta", clear
 *****************************sensitivity analysis1******************************
 ********** - use only if specifically coded type1 DM ***************************
 *
-*gen marker = clusternum if typediab!=1 & case_control==1 
+gen marker = clusternum if typediab!=1 & case_control==1 
 **marker is positive if type of DM is not specifically coded as 1 (only)
 **generate totalcluster to fill all empty spaces in the clusternum group
-*egen totalcluster = total(marker), by(clusternum)
+egen totalcluster = total(marker), by(clusternum)
 **then drop those cases and controls with a non-zero totalcluster, and totalcluster
-*drop if totalcluster>0
-*drop totalcluster
-*drop marker
+drop if totalcluster>0
+drop totalcluster
+drop marker
 ********************************************************************************
 *preserve
 *collapse age case_control sex BMI, by (id)
@@ -43,19 +43,19 @@ egen numid =group(id)
 *need to generate controls from cases with an indexdate for the kids who are controls so that they are all represented.
 
 ***get rid of old controls:
-*drop if case_control ==0
+drop if case_control ==0
 
 
 *** new indexdate for controls: marker for nearest to a being 365 days before case indexdate
-*gen controlindexmarker = indexdate - 365
+gen controlindexmarker = indexdate - 365
 
 *need to identify nearest to controlindexmarker within id 
-*gen timefrommarker = sqrt((eventdate-controlindexmarker)^2)
+gen timefrommarker = sqrt((eventdate-controlindexmarker)^2)
 *sum timefrommarker
 * from 0 to 365
 
 *find nearest to zero within id:
-*egen minfrommarker = min(timefrommarker), by(id)
+egen minfrommarker = min(timefrommarker), by(id)
 *from 0-365 days
 
 ***if there is a consultation within 21 days - use that as an indexdate
@@ -63,34 +63,34 @@ egen numid =group(id)
 *** i.e. indexdate becomes the date of the minfrommarker or the date of controlindexmarker if minfrommarker is missing - for events on dates prior to those dates (the new indexdate) i.e. the controls
 
 *** get the minimum event from -365 days if within 21 days...
-*gen minmarker =1 if minfrommarker==timefrommarker & timefrommarker<=21
-*drop timefrommarker
+gen minmarker =1 if minfrommarker==timefrommarker & timefrommarker<=21
+drop timefrommarker
 
 **Superdate is the date nearest to -365 before indexdate if there is an event within 21 days
 **if not then it is indexdate-365 
-*gen specialdate = eventdate if minmarker==1
-*egen superdate = min(specialdate), by(id)
-*replace superdate = controlindexmarker if superdate==.
-*format super %td
-*drop specialdate
+gen specialdate = eventdate if minmarker==1
+egen superdate = min(specialdate), by(id)
+replace superdate = controlindexmarker if superdate==.
+format super %td
+drop specialdate
 
 
 *** make the cases->controls if the events happened before the superdate
-*replace case_control=0 if eventdate < superdate
+replace case_control=0 if eventdate < superdate
 
 ***replace the indexdate for the controls
-*replace indexdate = superdate if case_control==0 
+replace indexdate = superdate if case_control==0 
 
 *** change the case_id
-*replace case_id = id if case_control==0
+replace case_id = id if case_control==0
 
 ***change the control ids:
-*replace id = "control"+id if case_control==0 
+replace id = "control"+id if case_control==0 
 
 ***update the numids
-*egen newnumid=group(id)
-*replace numid = newnumid
-*drop newnumid
+egen newnumid=group(id)
+replace numid = newnumid
+drop newnumid
 
 ***make timebeforeindex accurate for new indexdates, and get rid of events after the index and before the 91 days of the *study period 
 *
@@ -283,7 +283,7 @@ foreach i of numlist `weeks'{
 		la var `var' "Children with number of `var' failures"
 		la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
 		la val `var' failure
-		capture tabout `var' case_control using H:\JOE\THIN\outputs\panelized`var'.tsv , cells(freq) `heading' `filemethod'  
+		capture tabout `var' case_control using H:\JOE\THIN\outputs\S3panelized`var'.tsv , cells(freq) `heading' `filemethod'  
 		restore
 		local c=`c'+1 
 }
@@ -299,7 +299,7 @@ foreach i of numlist `weeks'{
 	display _rc
 restore
 }
-estout using H:\JOE\THIN\outputs\panelized`var'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append 
+estout using H:\JOE\THIN\outputs\S3panelized`var'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append 
 eststo clear
 }
 
