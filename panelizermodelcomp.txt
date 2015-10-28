@@ -1,8 +1,6 @@
-*****
+*****Sort out LR tests between models...per week basis
 ***** creating true panel data - getting each failure type into a line in the data
 **** Primary analysis
-
-
 
 
 *set mem 1g
@@ -101,7 +99,7 @@ drop if timebeforeindex>91
 drop if timebeforeindex<0 
 
 *start with 3 month data
-drop if timebeforeindex>91 
+*drop if timebeforeindex>91 
 
 ****descriptives: 
 ***get numbers of consultations in each category: tabulate by case_control
@@ -112,7 +110,7 @@ local c=0
 local heading = ""
 local filemethod = "replace"
 
-foreach var of varlist anyconsult PracticeActivity NonPractice facetoface  Phone test  prescription OOH Admission OtherAcute OtherLessAcute OtherNonMedical admin faceAndPhone nonadmin {
+foreach var of varlist anyconsult facetoface Phone faceAndPhone indirect OOH otherprovider prescription test admin nonadmin  {
 	if `c' >0{
 		local filemethod = "append"
 		local heading =  "h1(nil) h2(`var') h3(nil)"
@@ -124,8 +122,7 @@ restore
 
 
 
-****generate failtype 1 through 22 as indicator vaiables
-**newlist: PracticeActivity NonPractice facetoface  Phone test  prescription OOH Admission OtherAcute OtherLessAcute OtherNonMedical admin faceAndPhone nonadmin
+****generate failtype 1 through 16 as indicator vaiables
 
 gen failtype1x = 1 if facetoface == 1 
 gen failtype2x = 1 if OOH == 1 
@@ -156,25 +153,8 @@ gen failtype15x = 1 if prescription==1
 *test 
 gen failtype16x = 1 if test==1 
 
-*PracticeActivity
-gen failtype17x = 1 if PracticeActivity==1 
-
-*NonPractice
-gen failtype18x = 1 if NonPractice==1 
-
-*Admission
-gen failtype19x = 1 if Admission==1 
-
-*OtherAcute 
-gen failtype20x = 1 if OtherAcute==1 
-
-*OtherLessAcute 
-gen failtype21x = 1 if OtherLessAcute==1 
-
-*OtherNonMedical
-gen failtype22x = 1 if OtherNonMedical==1 
-
-
+*indirect
+gen failtype17x = 1 if indirect==1 
 
 *replace failtypex with number of events in time period
 
@@ -195,7 +175,7 @@ gen timeperiod13= inrange(timebeforeindex,85,91)
 
 
 foreach t of numlist 1/13{
-	foreach k of numlist 1/22{
+	foreach k of numlist 1/17{
 bysort numid: egen totalfailtype`k'intime`t' = total(failtype`k'x) if timeperiod`t'==1 
 replace totalfailtype`k'intime`t' = 0 if totalfailtype`k'intime`t'==.
 bysort numid: egen failures`k'time`t' = max(totalfailtype`k'intime`t')
@@ -203,7 +183,7 @@ bysort numid: egen failures`k'time`t' = max(totalfailtype`k'intime`t')
 }
 
 local outcome = ""
-foreach z of numlist 1/22{
+foreach z of numlist 1/17{
 	foreach t of numlist 1/13{
 if `z' == 1 local outcome = "FaceToFace"
 if `z' == 2 local outcome = "OOH"
@@ -221,21 +201,15 @@ if `z' == 13 local outcome = "Admin"
 if `z' == 14 local outcome = "NICE"
 if `z' == 15 local outcome = "Prescription"
 if `z' == 16 local outcome = "Test"
-if `z' == 17 local outcome = "PracticeActivity"
-if `z' == 18 local outcome = "NonPractice"
-if `z' == 19 local outcome = "Admission"
-if `z' == 20 local outcome = "OtherAcute"
-if `z' == 21 local outcome = "OtherLessAcute"
-if `z' == 22 local outcome = "OtherNonMedical"
-
+if `z' == 17 local outcome = "Indirect"
 
 rename failures`z'time`t' f`outcome't`t'
 }
 }
 
-preserve
+
 *Drop variable columns not needed now: 
-drop clustermeasure dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker NICEcodecount anyconsult facetoface OOH Phone faceAndPhone nonadmin admin test prescription  failtype* timeperiod* totalfailtype* PracticeActivity NonPractice facetoface Admission OtherAcute OtherLessAcute OtherNonMedical   
+drop clustermeasure dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker NICEcodecount anyconsult facetoface OOH Phone faceAndPhone nonadmin admin otherprovider test prescription indirect failtype* timeperiod* totalfailtype* 
 
 
 ***Now need to replace the duplicates in each time period:
@@ -249,7 +223,7 @@ duplicates drop id fAnyRecordt1, force
 
 
 **now reshape to long: 
-reshape long fFaceToFacet fOOHt fPhonet fFaceAndPhonet fNonAdmint fDKAt fThirstt fPolyuriat fWeightt fFatiguet fAbdoPaint fAnyRecordt fAdmint fNICEt fPrescriptiont fTestt fPracticeActivityt fNonPracticet fAdmissiont fOtherAcutet fOtherLessAcutet fOtherNonMedicalt , i(id) j(earlylate)
+reshape long fFaceToFacet fOOHt fPhonet fFaceAndPhonet fNonAdmint fDKAt fThirstt fPolyuriat fWeightt fFatiguet fAbdoPaint fAnyRecordt fAdmint fNICEt fPrescriptiont fTestt fIndirectt, i(id) j(earlylate)
 
 ***now have panel data with earlylate giving time in weeks prior to indexdate 
 *Lets rename them without f and t 
@@ -270,14 +244,9 @@ rename fAdmint Admin
 rename fNICEt NICE
 rename fPrescriptiont Prescription
 rename fTestt Test
-rename fPracticeActivityt PracticeActivity
-rename fNonPracticet NonPractice
-rename fAdmissiont Admission
-rename fOtherAcutet OtherAcute
-rename fOtherLessAcutet OtherLessAcute
-rename fOtherNonMedicalt OtherNonMedical
+rename fIndirectt Indirect
 
-***spare varlist: FaceToFace OOH Phone FaceAndPhone NonAdmin DKA Thirst Polyuria Weight Fatigue AbdoPain AnyRecord Admin NICE Prescription Test 
+***spare varlist: FaceToFace OOH Phone FaceAndPhone NonAdmin DKA Thirst Polyuria Weight Fatigue AbdoPain AnyRecord Admin NICE Prescription Test Indirect
 
 ***Need to generate ngroup to identify clusters:
 generate mgroup = id
@@ -292,11 +261,11 @@ xtset ngroup
 local c=0
 local heading = ""
 local filemethod = "replace"
-*local filename = "H:\JOE\THIN\outputs\HeirPrim`var'.tsv"
+*local filename = "H:\JOE\THIN\outputs\TEST1panelized`var'.tsv"
 local weeks = "1/13"
 
 
-foreach var of varlist  OtherNonMedical OtherLessAcute OtherAcute Admission NonPractice PracticeActivity Test Prescription NICE Admin AnyRecord AbdoPain Fatigue Weight Polyuria Thirst DKA NonAdmin FaceAndPhone Phone OOH FaceToFace{
+foreach var of varlist FaceToFace OOH Phone FaceAndPhone NonAdmin DKA Thirst Polyuria Weight Fatigue AbdoPain AnyRecord Admin NICE Prescription Test Indirect{
 eststo clear
 estimates clear
 
@@ -312,25 +281,28 @@ foreach i of numlist `weeks'{
 		la var `var' "Children with number of `var' failures"
 		la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
 		la val `var' failure
-		capture tabout `var' case_control using H:\JOE\THIN\outputs\HeirPrim`var'.tsv , cells(freq) `heading' `filemethod'  
+		capture tabout `var' case_control using H:\JOE\THIN\outputs\panelized`var'.tsv , cells(freq) `heading' `filemethod'  
 		restore
 		local c=`c'+1 
 }
 
+
+local weeks = "1"
 foreach i of numlist `weeks'{
-	preserve
+preserve
 	keep if earlylate==`i'
-	capture xtpoisson `var' case_control, irr iter(30) 
-	display e(chi2_c)
-	disp chiprob(1, e(chi2_c))*0.5 
-	estadd scalar palpha = chiprob(1, e(chi2_c))*0.5, replace
-	eststo, addscalars(errorcode _rc, replace)  
-	display _rc
+	
+foreach var of varlist FaceToFace NICE{
+  rename `var' fail
+	capture xtpoisson fail case_control, irr iter(30) 
+	eststo model`var'`i', addscalars(errorcode _rc, replace)
+rename fail `var'	
+}
 restore
 }
-estout using H:\JOE\THIN\outputs\HeirPrim`var'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append 
-eststo clear
-}
+
+lrtest modelFaceToFace1 modelNICE1
+**********needs dependent cariables to be named the same....
 
 get on with it 
 ****any unaccounted for admins?

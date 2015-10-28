@@ -275,19 +275,40 @@ gen anyNICE = 1 if NICEcodecount>1
 /*type of consultation: generate variales, facetoface==day only
 gen anyconsult = 1
 
-foreach var of newlist facetoface OOH Phone faceAndPhone nonadmin admin otherprovider test prescription indirect { 
+foreach var of newlist PracticeActivity NonPractice facetoface  Phone test  prescription OOH Admission OtherAcute OtherLessAcute OtherNonMedical admin faceAndPhone nonadmin{ 
 gen `var' =0
 }
 
 
 
 * mark the consultation where they occurred: 
-foreach var of varlist  locate1 locate2 locate3 locate5 locate6 locate4  locate7 locate8 locate9 locate10 locate11{
-replace facetoface = 1 if `var'== "I"
-replace facetoface = 1 if `var'== "X"
-replace facetoface = 1 if `var'== "R"
-replace facetoface = 1 if `var'== "K"
-replace facetoface = 1 if `var'== ("C", "h", "i", "j", "k", "l", "A", "9")
+foreach var of varlist  locate1 locate2 locate3 locate5 locate6 locate4 locate7 locate8 locate9 locate10 locate11{
+
+replace facetoface = 1 if `var'=="I"
+replace facetoface = 1 if `var'=="X"
+replace facetoface = 1 if `var'=="R"
+replace facetoface = 1 if `var'=="K"
+replace facetoface = 1 if `var'=="C"
+replace facetoface = 1 if `var'=="h"
+replace facetoface = 1 if `var'=="9"
+replace facetoface = 1 if `var'=="A"
+replace facetoface = 1 if `var'=="l"
+replace facetoface = 1 if `var'=="k"
+replace facetoface = 1 if `var'=="j"
+replace facetoface = 1 if `var'=="i"
+
+replace Phone = 1 if `var'=="u"
+replace Phone = 1 if `var'=="g"
+replace Phone = 1 if `var'=="J"
+replace Phone = 1 if `var'=="V"
+replace Phone = 1 if `var'=="U"
+
+replace test = 1 if `var'=="4"
+replace test = 1 if `var'=="5"
+replace test = 1 if `var'=="6"
+
+replace prescription=1 if `var'=="N"
+replace prescription=1 if `var'=="P"
 
 replace OOH = 1 if `var'== "B"
 replace OOH = 1 if `var'== "D"
@@ -297,18 +318,44 @@ replace OOH = 1 if `var'== "H"
 replace OOH = 1 if `var'== "d"
 replace OOH = 1 if `var'== "f"
 replace OOH = 1 if `var'== "o"
-replace OOH = 1 if `var'== ("m", "c")
+replace OOH = 1 if `var'== "m" 
+replace OOH = 1 if `var'== "c"
 
+replace Admission = 1 if `var'== "3" 
+replace Admission = 1 if `var'=="L"
+replace Admission = 1 if `var'=="W"
+replace Admission = 1 if `var'=="Y"
 
-replace Phone = 1 if `var'== ("u","U", "V", "J", "g")
+replace OtherAcute = 1 if `var'=="T"
+replace OtherAcute = 1 if `var'=="Z"
+replace OtherAcute = 1 if `var'=="a"
+replace OtherAcute = 1 if `var'=="o"
 
-replace otherprovider = 1 if `var' ==("Z", "W", "T", "3", "L", "M", "Y", "a", "b", "o", "p", "q", "n", "r", "s", "t",)
+replace OtherLessAcute = 1 if `var'=="b"
+replace OtherLessAcute = 1 if `var'== "M"
 
-replace admin = 1 if `var' ==( "v", "w", "x", "y", "e", "S", "1", "2", "7", "8", "E", "0", "O", "Q")
+replace OtherNonMedical = 1 if `var' == "n"
+replace OtherNonMedical = 1 if `var' == "p"
+replace OtherNonMedical = 1 if `var' == "q"
+replace OtherNonMedical = 1 if `var' == "r"
+replace OtherNonMedical = 1 if `var' == "s"
+replace OtherNonMedical = 1 if `var' == "t"
 
-replace test = 1 if `var'==("4","5","6")
-
-replace prescription=1 if `var'==("N","P")
+replace admin = 1 if `var' == "v"
+replace admin = 1 if `var' == "w"
+replace admin = 1 if `var' == "x"
+replace admin = 1 if `var' == "y"
+replace admin = 1 if `var' == "e"
+replace admin = 1 if `var' == "S"
+replace admin = 1 if `var' == "1"
+replace admin = 1 if `var' == "2"
+replace admin = 1 if `var' == "7"
+replace admin = 1 if `var' == "8"
+replace admin = 1 if `var' == "E"
+replace admin = 1 if `var' == "0"
+replace admin = 1 if `var' == "O"
+replace admin = 1 if `var' == "Q"
+replace admin = 1 if `var' == "00"
 }
 
 foreach i of num 1/16{
@@ -319,30 +366,50 @@ foreach i of num 1/49{
 replace test=1 if testdone`i' !=""
 }
 
+gen unknown = 0
+replace unknown =1 if  facetoface==0 & OtherNonMedical==0 & OtherLessAcute==0 & OtherAcute==0 & Admission==0 & OOH==0 & prescription==0 & test==0 & Phone==0 & facetoface==0 & admin==0 
+
+*There are 27 consults with no content of any sort.  Allocate to bottom of admin
+replace admin =1 if unknown==1 
+drop unknown 
+
 ***generate list style (non hierarchical) outcomes:
 gen listscript= prescription
 gen listtest = test
 
 
-****assert the heirarchy: Admin - 
-foreach var of varlist test prescription otherprovider OOH Phone facetoface{
+
+****assert the heirarchy: from (bottom up) Admin 
+foreach var of varlist OtherNonMedical OtherLessAcute OtherAcute Admission OOH prescription test Phone facetoface{
 replace admin = 0 if `var' ==1
 }
 
-foreach var of varlist prescription otherprovider OOH Phone facetoface{
-replace test = 0 if `var'==1
+foreach var of varlist OtherLessAcute OtherAcute Admission OOH prescription test Phone facetoface{
+replace OtherNonMedical = 0 if `var'==1
 }
 
-foreach var of varlist  otherprovider OOH Phone facetoface{
+foreach var of varlist  OtherAcute Admission OOH prescription test Phone facetoface{
+replace OtherLessAcute = 0 if `var'==1
+}
+
+foreach var of varlist Admission OOH prescription test Phone facetoface{
+replace OtherAcute = 0 if `var'==1
+}
+
+foreach var of varlist   OOH prescription test Phone facetoface{
+replace Admission = 0 if `var'==1
+}
+
+foreach var of varlist  prescription test Phone facetoface{
+replace OOH = 0 if `var'==1
+}
+
+foreach var of varlist  test Phone facetoface{
 replace prescription = 0 if `var'==1
 }
 
-foreach var of varlist   OOH Phone facetoface{
-replace otherprovider = 0 if `var'==1
-}
-
-foreach var of varlist   Phone facetoface{
-replace OOH = 0 if `var'==1
+foreach var of varlist  Phone facetoface{
+replace test = 0 if `var'==1
 }
 
 foreach var of varlist  facetoface{
@@ -350,14 +417,17 @@ replace Phone = 0 if `var'==1
 }
 
 
-**gen unknown = 0
-**replace unknown =1 if  prescription==0 & test==0 & otherprovider==0 & admin==0 & nonadmin ==0 & faceAndPhone==0 & Phone==0 & OOH==0 & facetoface==0 & anyNICE==0
-
-** there are no (known) unknowns now
 
 replace faceAndPhone = 1 if facetoface == 1 | Phone==1
+
 replace nonadmin = 1 if admin==0 
-replace indirect = 1 if faceAndPhone==0 & OOH==1 | otherprovider==1 | prescription==1 | test==1 | admin==1 
+
+replace PracticeActivity = 1 if facetoface==1 | Phone==1 | test==1 | prescription==1
+
+replace NonPractice = 1 if OOH==1 | Admission==1 | OtherAcute==1 | OtherLessAcute==1 | OtherNonMedical==1 | admin==1 
+
+ 
+
 
 
 save "H:\JOE\THIN\consults15final3.dta", replace
