@@ -117,7 +117,7 @@ foreach var of varlist anyconsult PracticeActivity NonPractice facetoface  Phone
 		local filemethod = "append"
 		local heading =  "h1(nil) h2(`var') h3(nil)"
 		}
-	tabout `var' case_control using H:\JOE\THIN\outputs\EventTypeTable.tsv , cells(freq) `heading' `filemethod'  ptotal(none)
+	tabout `var' case_control using H:\JOE\THIN\outputs\HeirPrimEventType.tsv , cells(freq) `heading' `filemethod'  ptotal(none)
 local c=`c'+1 
 }
 restore
@@ -233,7 +233,7 @@ rename failures`z'time`t' f`outcome't`t'
 }
 }
 
-preserve
+
 *Drop variable columns not needed now: 
 drop clustermeasure dkaproxy thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker NICEcodecount anyconsult facetoface OOH Phone faceAndPhone nonadmin admin test prescription  failtype* timeperiod* totalfailtype* PracticeActivity NonPractice facetoface Admission OtherAcute OtherLessAcute OtherNonMedical   
 
@@ -296,7 +296,7 @@ local filemethod = "replace"
 local weeks = "1/13"
 
 
-foreach var of varlist  OtherNonMedical OtherLessAcute OtherAcute Admission NonPractice PracticeActivity Test Prescription NICE Admin AnyRecord AbdoPain Fatigue Weight Polyuria Thirst DKA NonAdmin FaceAndPhone Phone OOH FaceToFace{
+foreach var of varlist OtherNonMedical OtherLessAcute OtherAcute Admission NonPractice PracticeActivity Test Prescription NICE Admin AnyRecord AbdoPain Fatigue Weight Polyuria Thirst DKA NonAdmin FaceAndPhone Phone OOH FaceToFace{
 eststo clear
 estimates clear
 
