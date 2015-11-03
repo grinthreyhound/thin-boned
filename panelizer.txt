@@ -296,7 +296,8 @@ local filemethod = "replace"
 local weeks = "1/13"
 
 
-foreach var of varlist OtherNonMedical OtherLessAcute OtherAcute Admission NonPractice PracticeActivity Test Prescription NICE Admin AnyRecord AbdoPain Fatigue Weight Polyuria Thirst DKA NonAdmin FaceAndPhone Phone OOH FaceToFace{
+foreach var of varlist AnyRecord{
+*OtherNonMedical OtherLessAcute OtherAcute Admission NonPractice PracticeActivity Test Prescription NICE Admin AnyRecord AbdoPain Fatigue Weight Polyuria Thirst DKA NonAdmin FaceAndPhone Phone OOH FaceToFace
 eststo clear
 estimates clear
 
@@ -312,7 +313,7 @@ foreach i of numlist `weeks'{
 		la var `var' "Children with number of `var' failures"
 		la def failure 1 "1 failure in week-`i'" 2 "2 failures in week-`i'" 3 "3 failures in week-`i'" 4 "4 failures in week-`i'" 5 "5 failures in week-`i'" 6 "6 failures in week-`i'" 7 "7 failures in week-`i'"
 		la val `var' failure
-		capture tabout `var' case_control using H:\JOE\THIN\outputs\HeirPrim`var'.tsv , cells(freq) `heading' `filemethod'  
+		capture tabout `var' case_control using H:\JOE\THIN\outputs\HeirPrimCh`var'.tsv , cells(freq) `heading' `filemethod'  
 		restore
 		local c=`c'+1 
 }
@@ -328,7 +329,7 @@ foreach i of numlist `weeks'{
 	display _rc
 restore
 }
-estout using H:\JOE\THIN\outputs\HeirPrim`var'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append 
+estout using H:\JOE\THIN\outputs\HeirPrimCh`var'.tsv,  eform drop(_cons) cells( b ci_l(fmt(3)) ci_u(fmt(3)) p(fmt(4))) stats(palpha errorcode) legend append 
 eststo clear
 }
 

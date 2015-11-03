@@ -288,6 +288,8 @@ egen ngroup = group(mgroup)
 
 *Inform stata is panel data, with ngroup as panelvar (the panel variable) remember we are dropping other time periods, so there shouldn't be extras within the id - that can't be the group defining variable! 
 
+gen age = eventdate - dob
+
 xtset ngroup
 
 local c=0
@@ -321,7 +323,7 @@ foreach i of numlist `weeks'{
 foreach i of numlist `weeks'{
 	preserve
 	keep if earlylate==`i'
-	capture xtpoisson `var' case_control, irr iter(30) 
+	capture xtpoisson `var' case_control age, irr iter(30) 
 	display e(chi2_c)
 	disp chiprob(1, e(chi2_c))*0.5 
 	estadd scalar palpha = chiprob(1, e(chi2_c))*0.5, replace
