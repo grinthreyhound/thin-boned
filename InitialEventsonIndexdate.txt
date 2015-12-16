@@ -54,7 +54,7 @@ drop if totalcluster>0
 drop totalcluster
 drop marker
 
-*** now have 1195 cases
+***now have 1195 cases
 
 **get number and % with characteristics on day...
 foreach var of varlist thirstmarker polyuriamarker weightmarker fatiguemarker abdopmarker NICEcodecount anyNICE dkaproxy{

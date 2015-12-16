@@ -108,6 +108,7 @@ drop if timebeforeindex>91
 
 preserve
 drop if timebeforeindex==0 
+*drop if timebeforeindex>7 
 local c=0
 local heading = ""
 local filemethod = "replace"
@@ -117,7 +118,7 @@ foreach var of varlist anyconsult PracticeActivity NonPractice facetoface  Phone
 		local filemethod = "append"
 		local heading =  "h1(nil) h2(`var') h3(nil)"
 		}
-	tabout `var' case_control using H:\JOE\THIN\outputs\HeirPrimEventType.tsv , cells(freq) `heading' `filemethod'  ptotal(none)
+	tabout `var' case_control using H:\JOE\THIN\outputs\HeirPrimEventTypeWeek1.tsv , cells(freq) `heading' `filemethod'  ptotal(none)
 local c=`c'+1 
 }
 restore
